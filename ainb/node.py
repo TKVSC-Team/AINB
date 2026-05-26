@@ -1436,3 +1436,42 @@ class Node:
         prop.default_value = default_value
         self.properties.get_properties(param_type).append(prop)
         return prop
+    
+    # ==========================================
+    # EDITING API: ACTIONS AND QUERIES
+    # ==========================================
+
+    def add_action(self, action_slot: str, action_name: str) -> "Action":
+        """Adds an XLink Action (animation, effect, sound) to the node."""
+        from ainb.action import Action
+        act = Action(action_slot, action_name)
+        self.actions.append(act)
+        return act
+
+    def remove_action(self, action_slot: str) -> None:
+        """Removes an XLink action by its slot name."""
+        self.actions = [act for act in self.actions if act.action_slot != action_slot]
+
+    def add_query(self, query_node_index: int) -> None:
+        """Links this node to a Query Node."""
+        if query_node_index not in self.queries:
+            self.queries.append(query_node_index)
+
+    def remove_query(self, query_node_index: int) -> None:
+        """Unlinks a Query Node."""
+        if query_node_index in self.queries:
+            self.queries.remove(query_node_index)
+
+    def add_transition_plug(self, target_node_index: int, command_name: str = "", update_post_calc: bool = False) -> None:
+        """Adds a transition to another state/node."""
+        from ainb.node import TransitionPlug
+        from ainb.transition import Transition
+        
+        plug = TransitionPlug()
+        plug.node_index = target_node_index
+        plug.transition = Transition(
+            transition_type=0 if command_name else 1, 
+            update_post_calc=update_post_calc, 
+            command_name=command_name
+        )
+        self._plugs[PlugType.Transition].append(plug)
