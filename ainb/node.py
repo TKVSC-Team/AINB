@@ -1491,7 +1491,10 @@ class Node:
             raise IndexError(f"Plug index {plug_index} out of bounds for {plug_type_name}")
 
     def set_input_from_node_by_index(self, param_type_name: str, param_index: int, source_node_index: int, source_output_index: int = 0) -> None:
-        """Links an EXISTING data input pin to a source node's output pin."""
+        """Links an EXISTING data input pin to a source node's output pin.
+
+        Supports multi-source inputs by appending new unique sources.
+        """
         from ainb.param_common import ParamType
         from ainb.param import ParamSource
         
@@ -1506,10 +1509,37 @@ class Node:
             param = inputs[param_index]
             param.is_blackboard_input = False
             if isinstance(param.source, list):
-                param.source = ParamSource(src_node_index=source_node_index, src_output_index=source_output_index)
+                # Multi-source param: append only if this exact source link does not exist.
+                exists = any(
+                    src.src_node_index == source_node_index and src.src_output_index == source_output_index
+                    for src in param.source
+                )
+                if not exists:
+                    param.source.append(ParamSource(src_node_index=source_node_index, src_output_index=source_output_index))
             else:
-                param.source.src_node_index = source_node_index
-                param.source.src_output_index = source_output_index
-                param.source.flags = param.source.flags.set_blackboard(False)
+                # Single-source param: if already linked to a different source, promote to multi-source list.
+                has_existing = param.source.src_node_index >= 0
+                same_existing = (
+                    param.source.src_node_index == source_node_index
+                    and param.source.src_output_index == source_output_index
+                )
+                if has_existing and not same_existing:
+                    existing = ParamSource(
+                        src_node_index=param.source.src_node_index,
+                        src_output_index=param.source.src_output_index,
+                        flags=param.source.flags.set_blackboard(False),
+                    )
+                    param.source = [
+                        existing,
+                        ParamSource(
+                            src_node_index=source_node_index,
+                            src_output_index=source_output_index,
+                            flags=param.source.flags.set_blackboard(False),
+                        ),
+                    ]
+                elif not same_existing:
+                    param.source.src_node_index = source_node_index
+                    param.source.src_output_index = source_output_index
+                    param.source.flags = param.source.flags.set_blackboard(False)
         else:
             raise IndexError(f"Input param index {param_index} out of bounds for {param_type_name}")
