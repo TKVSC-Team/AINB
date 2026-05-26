@@ -1475,3 +1475,41 @@ class Node:
             command_name=command_name
         )
         self._plugs[PlugType.Transition].append(plug)
+
+    def set_plug_target(self, plug_type_name: str, plug_index: int, target_node_index: int) -> None:
+        """Connects an EXISTING flow plug to a target node, avoiding duplication."""
+        from ainb.node import PlugType
+        try:
+            ptype = PlugType[plug_type_name]
+        except KeyError:
+            raise ValueError(f"Unknown plug type: {plug_type_name}")
+
+        plugs = self.get_plugs(ptype)
+        if 0 <= plug_index < len(plugs):
+            plugs[plug_index].node_index = target_node_index
+        else:
+            raise IndexError(f"Plug index {plug_index} out of bounds for {plug_type_name}")
+
+    def set_input_from_node_by_index(self, param_type_name: str, param_index: int, source_node_index: int, source_output_index: int = 0) -> None:
+        """Links an EXISTING data input pin to a source node's output pin."""
+        from ainb.param_common import ParamType
+        from ainb.param import ParamSource
+        
+        # Match case-insensitive (e.g., 'F32', 'S32', 'String' coming from the adapter)
+        try:
+            ptype = next(pt for pt in ParamType if pt.name.lower() == param_type_name.lower())
+        except StopIteration:
+            raise ValueError(f"Unknown parameter type: {param_type_name}")
+            
+        inputs = self.params.get_inputs(ptype)
+        if 0 <= param_index < len(inputs):
+            param = inputs[param_index]
+            param.is_blackboard_input = False
+            if isinstance(param.source, list):
+                param.source = ParamSource(src_node_index=source_node_index, src_output_index=source_output_index)
+            else:
+                param.source.src_node_index = source_node_index
+                param.source.src_output_index = source_output_index
+                param.source.flags = param.source.flags.set_blackboard(False)
+        else:
+            raise IndexError(f"Input param index {param_index} out of bounds for {param_type_name}")
