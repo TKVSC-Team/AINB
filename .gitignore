@@ -205,3 +205,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+ainb/combine_scripts.py
+ainb/composite.py

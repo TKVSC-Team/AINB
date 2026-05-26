@@ -1327,3 +1327,112 @@ class Node:
         for plug_type in PlugType:
             for plug in self.get_plugs(plug_type):
                 plug._write(writer, ctx)
+
+    # ==========================================
+    # EDITING API: WIRING AND LINKING
+    # ==========================================
+
+    def link_child(self, child_node: "Node", connection_name: str = "Next", condition: typing.Any = None, is_default: bool = False) -> None:
+        """
+        Automatically creates the appropriate ChildPlug to link to a target node.
+        Handles specific Selector types dynamically based on self.type.
+        """
+        if self.type == NodeType.Element_S32Selector:
+            plug = S32SelectorPlug()
+            plug.is_default = is_default
+            if not is_default and condition is not None:
+                plug.condition = int(condition)
+        elif self.type == NodeType.Element_StringSelector:
+            plug = StringSelectorPlug()
+            plug.is_default = is_default
+            if not is_default and condition is not None:
+                plug.condition = str(condition)
+        elif self.type == NodeType.Element_F32Selector:
+            plug = F32SelectorPlug()
+            plug.is_default = is_default
+            if not is_default and condition is not None:
+                if isinstance(condition, tuple) and len(condition) == 2:
+                    plug.condition_min, plug.condition_max = float(condition[0]), float(condition[1])
+                else:
+                    plug.condition_min = plug.condition_max = float(condition)
+        elif self.type == NodeType.Element_RandomSelector:
+            plug = RandomSelectorPlug()
+            plug.weight = float(condition) if condition is not None else 1.0
+        else:
+            plug = ChildPlug()
+
+        plug.node_index = child_node.index
+        plug.name = connection_name
+        self.child_plugs.append(plug)
+
+    def add_input_param(self, param_type: ParamType, name: str, default_value: typing.Any = None) -> "InputParam":
+        from ainb.param import InputParam
+        param = InputParam(param_type)
+        param.name = name
+        param.default_value = default_value
+        self.params.get_inputs(param_type).append(param)
+        return param
+
+    def set_input_from_node(self, param_type: ParamType, param_name: str, source_node: "Node", source_output_index: int = 0) -> None:
+        from ainb.param import ParamSource
+        for param in self.params.get_inputs(param_type):
+            if param.name == param_name:
+                param.is_blackboard_input = False
+                if isinstance(param.source, list):
+                    param.source = ParamSource(src_node_index=source_node.index, src_output_index=source_output_index)
+                else:
+                    param.source.src_node_index = source_node.index
+                    param.source.src_output_index = source_output_index
+                    param.source.flags = param.source.flags.set_blackboard(False)
+                return
+        raise ValueError(f"Input parameter '{param_name}' of type {param_type.name} not found in node.")
+
+    def set_input_from_blackboard(self, param_type: ParamType, param_name: str, blackboard_index: int) -> None:
+        from ainb.param import ParamSource, ParamFlag
+        for param in self.params.get_inputs(param_type):
+            if param.name == param_name:
+                param.is_blackboard_input = True
+                if isinstance(param.source, list):
+                    param.source = ParamSource()
+                param.source.src_node_index = -1
+                param.source.src_output_index = -1
+                param.source.flags = ParamFlag().set_blackboard(True).set_index(blackboard_index)
+                return
+        raise ValueError(f"Input parameter '{param_name}' of type {param_type.name} not found in node.")
+
+    # ==========================================
+    # EDITING API: NODE DATA AND ATTACHMENTS
+    # ==========================================
+
+    def update_input_default(self, param_type: ParamType, param_name: str, new_value: typing.Any) -> None:
+        """Updates the hardcoded default value of an input parameter."""
+        for param in self.params.get_inputs(param_type):
+            if param.name == param_name:
+                param.default_value = new_value
+                param.is_blackboard_input = False
+                # Enforce that it relies on the default value, not a connection
+                param.source.flags = param.source.flags.set_uses_default(True).set_blackboard(False)
+                param.source.src_node_index = -1
+                return
+        raise ValueError(f"Input '{param_name}' not found on node.")
+
+    def add_attachment(self, name: str) -> Attachment:
+        """Creates and appends a new Attachment to this node."""
+        from ainb.attachment import Attachment
+        att = Attachment()
+        att.name = name
+        self.attachments.append(att)
+        return att
+
+    def remove_attachment(self, name: str) -> None:
+        """Removes an attachment by name."""
+        self.attachments = [att for att in self.attachments if att.name != name]
+        
+    def add_property(self, param_type: ParamType, name: str, default_value: typing.Any = None) -> "Property":
+        """Adds a property (often used by attachments or specialized nodes)."""
+        from ainb.property import Property
+        prop = Property(param_type)
+        prop.name = name
+        prop.default_value = default_value
+        self.properties.get_properties(param_type).append(prop)
+        return prop

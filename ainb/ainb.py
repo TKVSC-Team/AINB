@@ -5,6 +5,7 @@ import json
 import os
 import struct
 import typing
+import uuid
 
 from ainb.action import Action
 from ainb.attachment import Attachment
@@ -23,8 +24,6 @@ from ainb.transition import Transition
 from ainb.unknown import UnknownSection0x58
 from ainb.utils import DictDecodeError, JSONType, ParseError, ParseWarning
 from ainb.write_context import WriteContext
-
-# TODO: editing API (at least add/remove nodes/plugs/etc.)
 
 SUPPORTED_VERSIONS: typing.Tuple[int, ...] = (0x404, 0x407, 0x408)
 
@@ -829,6 +828,175 @@ class AINB:
             if cmd.name == cmd_name:
                 return cmd
         return None
+
+    # ==========================================
+    # EDITING API: GRAPH AND NODE MANAGEMENT
+    # ==========================================
+
+    def _shift_indices(self, threshold: int, shift: int, removed_index: int = -1) -> None:
+        """
+        Master re-indexer for the AINB graph. Shifts all node pointers up or down.
+        """
+        from ainb.node import get_null_index, PlugType
+        from ainb.param_common import ParamType
+        from ainb.replacement import ReplacementType
+
+        NULL_PLUG = get_null_index()
+
+        def remap_plug(idx: int) -> int:
+            if idx == removed_index:
+                return NULL_PLUG
+            if idx != NULL_PLUG and idx >= threshold:
+                return idx + shift
+            return idx
+
+        def remap_param(idx: int) -> int:
+            if idx == removed_index:
+                return -1
+            if idx != -1 and idx >= threshold:
+                return idx + shift
+            return idx
+
+        # 1. Update Commands
+        for cmd in self.commands:
+            cmd.root_node_index = remap_param(cmd.root_node_index)
+            cmd.secondary_root_node_index = remap_param(cmd.secondary_root_node_index)
+
+        # 2. Update Plugs and Parameters in all nodes
+        for node in self.nodes:
+            # Plugs
+            for plug_type in PlugType:
+                for plug in node.get_plugs(plug_type):
+                    plug.node_index = remap_plug(plug.node_index)
+
+            # Parameters
+            for p_type in ParamType:
+                for param in node.params.get_inputs(p_type):
+                    if isinstance(param.source, list):
+                        for src in param.source:
+                            if not src.is_multi:
+                                src.src_node_index = remap_param(src.src_node_index)
+                    else:
+                        if not param.source.is_multi:
+                            param.source.src_node_index = remap_param(param.source.src_node_index)
+
+        # 3. Update Replacement Table (if version supports it)
+        if hasattr(self, 'replacement_table') and self.replacement_table:
+            for rep in self.replacement_table:
+                rep.node_index = remap_param(rep.node_index)
+                if rep.type == ReplacementType.ReplaceChild:
+                    rep.new_index = remap_param(rep.new_index)
+
+    def add_node(self, node: "Node") -> int:
+        """Appends a node to the graph and assigns it the next available index."""
+        node.index = len(self.nodes)
+        self.nodes.append(node)
+        return node.index
+
+    def insert_node(self, index: int, node: "Node") -> int:
+        """Inserts a node at a specific index, shifting all subsequent nodes up."""
+        if index < 0 or index > len(self.nodes):
+            raise ValueError(f"Cannot insert node at out-of-bounds index {index}")
+        
+        self._shift_indices(threshold=index, shift=1)
+        node.index = index
+        self.nodes.insert(index, node)
+        
+        # Enforce strict index contiguity
+        for i, n in enumerate(self.nodes):
+            n.index = i
+            
+        return index
+
+    def remove_node(self, index: int) -> None:
+        """Removes a node, shifting subsequent nodes down and nullifying pointers to it."""
+        if index < 0 or index >= len(self.nodes):
+            raise ValueError(f"Cannot remove node at out-of-bounds index {index}")
+        
+        # Shift everything > index down by 1. Nullify anything pointing exactly to index.
+        self._shift_indices(threshold=index + 1, shift=-1, removed_index=index)
+        self.nodes.pop(index)
+        
+        # Enforce strict index contiguity
+        for i, n in enumerate(self.nodes):
+            n.index = i
+
+    # ==========================================
+    # EDITING API: COMMANDS AND MODULES
+    # ==========================================
+
+    def add_command(self, name: str, root_node: "Node" = None) -> Command:
+        """Registers a new command (Entry Point) in the AINB."""
+        cmd = Command()
+        cmd.name = name
+        cmd.guid = str(uuid.uuid4())
+        if root_node:
+            cmd.root_node_index = root_node.index
+        self.commands.append(cmd)
+        return cmd
+
+    def remove_command(self, name: str) -> None:
+        """Removes a command by its name."""
+        self.commands = [cmd for cmd in self.commands if cmd.name != name]
+
+    def add_module(self, path: str, category: str = "", instance_count: int = 0) -> Module:
+        """Adds a module dependency to this AINB."""
+        mod = Module(path, category, instance_count)
+        self.modules.append(mod)
+        return mod
+
+    def remove_module(self, path: str) -> None:
+        """Removes a module dependency."""
+        self.modules = [mod for mod in self.modules if mod.path != path]
+
+    # ==========================================
+    # EDITING API: BLACKBOARD
+    # ==========================================
+
+    def add_blackboard_param(self, p_type: "BBParamType", name: str, default_value: typing.Any = None) -> int:
+        """Adds a new parameter to the blackboard and returns its index."""
+        from ainb.blackboard import BBParam, Blackboard
+        
+        if self.blackboard is None:
+            self.blackboard = Blackboard()
+            
+        param = BBParam(p_type)
+        param.name = name
+        param.default_value = default_value
+        
+        target_list = self.blackboard.get_params(p_type)
+        target_list.append(param)
+        return len(target_list) - 1
+
+    def remove_blackboard_param(self, p_type: "BBParamType", index: int) -> None:
+        """Removes a blackboard parameter and shifts all node references to it down by 1."""
+        if not self.blackboard:
+            return
+            
+        target_list = self.blackboard.get_params(p_type)
+        if index < 0 or index >= len(target_list):
+            raise ValueError("Blackboard index out of bounds")
+            
+        target_list.pop(index)
+
+        # Cascade the shift to all nodes using this parameter type
+        from ainb.param_common import ParamType
+        for node in self.nodes:
+            for n_p_type in ParamType:
+                for input_param in node.params.get_inputs(n_p_type):
+                    if input_param.is_blackboard_input:
+                        current_idx = input_param.source.flags.get_index()
+                        if current_idx == index:
+                            # The parameter was deleted; revert to a default state
+                            input_param.is_blackboard_input = False
+                            input_param.source.flags = input_param.source.flags.set_blackboard(False)
+                        elif current_idx > index:
+                            # Shift down
+                            input_param.source.flags = input_param.source.flags.set_index(current_idx - 1)
+
+# ==========================================
+# MODULE-LEVEL GAME SETTINGS
+# ==========================================
 
 def set_game(game: str) -> None:
     """
