@@ -51,13 +51,13 @@ def main() -> None:
 
     if args.output_path:
         os.makedirs(args.output_path, exist_ok=True)
-    
+
     in_file_type: str = args.intype.lower()
     if in_file_type == "":
         in_file_type = os.path.splitext(args.input_file_path)[1][1:]
-    
+
     out_file_type: str = args.outtype.lower()
-    
+
     expected_version: int | None = GAME_TO_VERSION_MAP.get(args.game, None)
 
     if args.game != "other":

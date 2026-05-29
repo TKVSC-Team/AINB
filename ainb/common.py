@@ -3,6 +3,7 @@ import typing
 
 from ainb.utils import Endian, ReaderWithStrPool, WriterWithStrPool
 
+
 class AINBReader(ReaderWithStrPool):
     """
     AINB reader

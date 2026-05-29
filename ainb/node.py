@@ -12,7 +12,15 @@ from ainb.param_common import ParamType
 from ainb.property import PropertySet
 from ainb.state import StateInfo
 from ainb.transition import Transition
-from ainb.utils import calc_hash, DictDecodeError, DictDecodeWarning, IntEnumEx, JSONType, ParseError, ParseWarning
+from ainb.utils import (
+    DictDecodeError,
+    DictDecodeWarning,
+    IntEnumEx,
+    JSONType,
+    ParseError,
+    ParseWarning,
+    calc_hash,
+)
 from ainb.write_context import WriteContext
 
 NULL_INDEX: int = 0x7fff
@@ -124,7 +132,7 @@ class GenericPlug(Plug):
     @classmethod
     def get_type(cls) -> PlugType:
         return PlugType.Generic
-    
+
     @classmethod
     def _read(cls, reader: AINBReader) -> "GenericPlug":
         plug: GenericPlug = cls()
@@ -137,17 +145,17 @@ class GenericPlug(Plug):
             "Node Index" : self.node_index,
             "Name" : self.name,
         }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "GenericPlug":
         plug: GenericPlug = cls()
         plug.node_index = data["Node Index"]
         plug.name = data["Name"]
         return plug
-    
+
     def get_size(self) -> int:
         return 0x8
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_string_offset(self.name)
@@ -168,7 +176,7 @@ class BoolSelectorInputPlug(GenericPlug):
         plug.unk0 = reader.read_u32()
         plug.unk1 = reader.read_u32() # default?
         return plug
-    
+
     def _as_dict(self) -> JSONType:
         return {
             "Node Index" : self.node_index,
@@ -176,7 +184,7 @@ class BoolSelectorInputPlug(GenericPlug):
             "Unknown 1" : self.unk0,
             "Unknown 2" : self.unk1,
         }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "BoolSelectorInputPlug":
         plug: BoolSelectorInputPlug = cls()
@@ -185,10 +193,10 @@ class BoolSelectorInputPlug(GenericPlug):
         plug.unk0 = data["Unknown 1"]
         plug.unk1 = data["Unknown 2"]
         return plug
-    
+
     def get_size(self) -> int:
         return 0x10
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_string_offset(self.name)
@@ -211,7 +219,7 @@ class F32SelectorInputPlug(GenericPlug):
         plug.unk0 = reader.read_u32()
         plug.unk1 = reader.read_f32()
         return plug
-    
+
     def _as_dict(self) -> JSONType:
         return {
             "Node Index" : self.node_index,
@@ -219,7 +227,7 @@ class F32SelectorInputPlug(GenericPlug):
             "Unknown 1" : self.unk0,
             "Unknown 2" : self.unk1,
         }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "F32SelectorInputPlug":
         plug: F32SelectorInputPlug = cls()
@@ -228,16 +236,16 @@ class F32SelectorInputPlug(GenericPlug):
         plug.unk0 = data["Unknown 1"]
         plug.unk1 = data["Unknown 2"]
         return plug
-    
+
     def get_size(self) -> int:
         return 0x10
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_string_offset(self.name)
         writer.write_u32(self.unk0)
         writer.write_f32(self.unk1)
-    
+
 class ChildPlug(Plug):
     __slots__ = ["name"]
 
@@ -248,20 +256,20 @@ class ChildPlug(Plug):
     @classmethod
     def get_type(cls) -> PlugType:
         return PlugType.Child
-    
+
     @classmethod
     def _read(cls, reader: AINBReader) -> "ChildPlug":
         plug: ChildPlug = cls()
         plug.node_index = reader.read_s32()
         plug.name = reader.read_string_offset()
         return plug
-    
+
     def _as_dict(self) -> JSONType:
         return {
             "Node Index" : self.node_index,
             "Name" : self.name,
         }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "ChildPlug":
         plug: ChildPlug = cls()
@@ -271,7 +279,7 @@ class ChildPlug(Plug):
 
     def get_size(self) -> int:
         return 0x8
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_string_offset(self.name)
@@ -301,7 +309,7 @@ class S32SelectorPlug(ChildPlug):
         else:
             plug.condition = reader.read_s32()
         return plug
-    
+
     def _as_dict(self) -> JSONType:
         if self.is_default:
             return {
@@ -322,7 +330,7 @@ class S32SelectorPlug(ChildPlug):
                 "Blackboard Index" : self.blackboard_index,
                 "Default Condition" : self.condition,
             }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "S32SelectorPlug":
         plug: S32SelectorPlug = cls()
@@ -336,10 +344,10 @@ class S32SelectorPlug(ChildPlug):
         else:
             plug.is_default = data["Is Default"]
         return plug
-    
+
     def get_size(self) -> int:
         return 0x10
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_string_offset(self.name)
@@ -389,7 +397,7 @@ class F32SelectorPlug(ChildPlug):
             else:
                 plug.condition_max = reader.read_f32()
         return plug
-    
+
     @staticmethod
     def _format_condition(condition: float, bb_index: int, is_min: bool) -> JSONType:
         if bb_index == -1:
@@ -433,10 +441,10 @@ class F32SelectorPlug(ChildPlug):
             else:
                 plug.blackboard_index_max = data["Condition Max Blackboard Index"]
         return plug
-    
+
     def get_size(self) -> int:
         return 0x28
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_string_offset(self.name)
@@ -485,7 +493,7 @@ class StringSelectorPlug(ChildPlug):
         else:
             plug.condition = reader.read_string_offset()
         return plug
-    
+
     def _as_dict(self) -> JSONType:
         if self.is_default:
             return {
@@ -506,7 +514,7 @@ class StringSelectorPlug(ChildPlug):
                 "Blackboard Index" : self.blackboard_index,
                 "Default Condition" : self.condition,
             }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "StringSelectorPlug":
         plug: StringSelectorPlug = cls()
@@ -520,10 +528,10 @@ class StringSelectorPlug(ChildPlug):
         else:
             plug.is_default = data["Is Default"]
         return plug
-    
+
     def get_size(self) -> int:
         return 0x10
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_string_offset(self.name)
@@ -556,7 +564,7 @@ class RandomSelectorPlug(ChildPlug):
             plug.blackboard_index = index
         plug.weight = reader.read_f32()
         return plug
-    
+
     def _as_dict(self) -> JSONType:
         if self.blackboard_index == -1:
             return {
@@ -571,7 +579,7 @@ class RandomSelectorPlug(ChildPlug):
                 "Blackboard Index" : self.blackboard_index,
                 "Default Weight" : self.weight,
             }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "RandomSelectorPlug":
         plug: RandomSelectorPlug = cls()
@@ -583,10 +591,10 @@ class RandomSelectorPlug(ChildPlug):
             plug.blackboard_index = data["Blackboard Index"]
             plug.weight = data["Default Weight"]
         return plug
-    
+
     def get_size(self) -> int:
         return 0x10
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_string_offset(self.name)
@@ -617,7 +625,7 @@ class BSASelectorUpdaterPlug(ChildPlug):
         else:
             plug.child_enum_value = reader.read_u32()
         return plug
-    
+
     def _as_dict(self) -> JSONType:
         if self.child_enum_bb_index < 0:
             return {
@@ -631,7 +639,7 @@ class BSASelectorUpdaterPlug(ChildPlug):
                 "Name" : self.name,
                 "Child Enum BB Index" : self.child_enum_bb_index,
             }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "BSASelectorUpdaterPlug":
         plug: BSASelectorUpdaterPlug = cls()
@@ -642,10 +650,10 @@ class BSASelectorUpdaterPlug(ChildPlug):
         else:
             plug.child_enum_bb_index = data["Child Enum BB Index"]
         return plug
-    
+
     def get_size(self) -> int:
         return 0x10
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_string_offset(self.name)
@@ -662,7 +670,7 @@ class TransitionPlug(Plug):
     def __init__(self) -> None:
         super().__init__()
         self.transition: Transition = Transition()
-    
+
     @classmethod
     def get_type(cls) -> PlugType:
         return PlugType.Transition
@@ -679,7 +687,7 @@ class TransitionPlug(Plug):
         except IndexError as e:
             raise ParseError(reader, f"TransitionPlug has out-of-bounds entry index: {index}") from e
         return plug
-    
+
     def _as_dict(self) -> JSONType:
         if self.transition.transition_type == 0:
             return {
@@ -694,7 +702,7 @@ class TransitionPlug(Plug):
                 "Transition Type" : self.transition.transition_type,
                 "Update Post Calc" : self.transition.update_post_calc,
             }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "TransitionPlug":
         plug: TransitionPlug = cls()
@@ -711,10 +719,10 @@ class TransitionPlug(Plug):
                 data["Update Post Calc"],
             )
         return plug
-    
+
     def get_size(self) -> int:
         return 0x8
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_u32(ctx.transitions.index(self.transition))
@@ -732,7 +740,7 @@ class StringSelectorInputPlug(Plug):
     @classmethod
     def get_type(cls) -> PlugType:
         return PlugType.String
-    
+
     @classmethod
     def _read(cls, reader: AINBReader) -> "StringSelectorInputPlug":
         plug: StringSelectorInputPlug = cls()
@@ -744,7 +752,7 @@ class StringSelectorInputPlug(Plug):
         plug.unknown = reader.read_u32()
         plug.default_value = reader.read_string_offset()
         return plug
-    
+
     def _as_dict(self) -> JSONType:
         if self._read_extra:
             return {
@@ -758,7 +766,7 @@ class StringSelectorInputPlug(Plug):
                 "Node Index" : self.node_index,
                 "Name" : self.name,
             }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "StringSelectorInputPlug":
         plug: StringSelectorInputPlug = cls()
@@ -769,10 +777,10 @@ class StringSelectorInputPlug(Plug):
             plug.default_value = data["Default Value"]
             plug._read_extra = True
         return plug
-    
+
     def get_size(self) -> int:
         return 0x10 if self._read_extra else 0x8
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_string_offset(self.name)
@@ -793,7 +801,7 @@ class S32SelectorInputPlug(Plug):
     @classmethod
     def get_type(cls) -> PlugType:
         return PlugType.Int
-    
+
     @classmethod
     def _read(cls, reader: AINBReader) -> "S32SelectorInputPlug":
         plug: S32SelectorInputPlug = cls()
@@ -805,7 +813,7 @@ class S32SelectorInputPlug(Plug):
         plug.unknown = reader.read_u32()
         plug.default_value = reader.read_s32()
         return plug
-    
+
     def _as_dict(self) -> JSONType:
         if self._read_extra:
             return {
@@ -819,7 +827,7 @@ class S32SelectorInputPlug(Plug):
                 "Node Index" : self.node_index,
                 "Name" : self.name,
             }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "S32SelectorInputPlug":
         plug: S32SelectorInputPlug = cls()
@@ -830,10 +838,10 @@ class S32SelectorInputPlug(Plug):
             plug.default_value = data["Default Value"]
             plug._read_extra = True
         return plug
-    
+
     def get_size(self) -> int:
         return 0x10 if self._read_extra else 0x8
-    
+
     def _write(self, writer: AINBWriter, ctx: WriteContext) -> None:
         writer.write_s32(self.node_index)
         writer.write_string_offset(self.name)
@@ -848,19 +856,19 @@ class NodeFlag(int):
 
     def is_query(self) -> bool:
         return self & 1 != 0
-    
+
     def is_module(self) -> bool:
         return self & 2 != 0
-    
+
     def is_root_node(self) -> bool:
         return self & 4 != 0
-    
+
     def is_multi_param_type2(self) -> bool:
         return self & 8 != 0
-    
+
     def set_query(self, b: bool = True) -> "NodeFlag":
         return NodeFlag(self & 0xfe | int(b))
-    
+
     def set_module(self, b: bool = True) -> "NodeFlag":
         return NodeFlag(self & 0xfd | int(b) << 1)
 
@@ -881,7 +889,7 @@ class NodeFlag(int):
         if self.is_multi_param_type2():
             out.append("Use MultiParam Type 2")
         return out
-    
+
     @classmethod
     def _from_flag_list(cls, data: JSONType) -> "NodeFlag":
         flag: NodeFlag = cls()
@@ -919,68 +927,68 @@ class Node:
         self._plugs: typing.List[typing.List[Plug]] = [ # node "plugs" (connections between nodes)
             [], [], [], [], [], [], [], [], [], []
         ]
-        
+
     @property
     def generic_plugs(self) -> typing.List[GenericPlug]:
         """
         Generic plugs used for inputs (bool/float) and outputs
         """
         return typing.cast(typing.List[GenericPlug], self._plugs[PlugType.Generic])
-    
+
     @property
     def _01_plugs(self) -> typing.List[Plug]: # unused
         return self._plugs[PlugType._01]
-    
+
     @property
     def child_plugs(self) -> typing.List[ChildPlug]:
         """
         Plugs used for control flow
         """
         return typing.cast(typing.List[ChildPlug], self._plugs[PlugType.Child])
-    
+
     @property
     def transition_plugs(self) -> typing.List[TransitionPlug]:
         """
         Transition plugs
         """
         return typing.cast(typing.List[TransitionPlug], self._plugs[PlugType.Transition])
-    
+
     @property
     def string_plugs(self) -> typing.List[StringSelectorInputPlug]:
         """
         String input plugs
         """
         return typing.cast(typing.List[StringSelectorInputPlug], self._plugs[PlugType.String])
-    
+
     @property
     def int_plugs(self) -> typing.List[S32SelectorInputPlug]:
         """
         Int input plugs
         """
         return typing.cast(typing.List[S32SelectorInputPlug], self._plugs[PlugType.Int])
-    
+
     @property
     def _06_plugs(self) -> typing.List[Plug]: # unused
         return self._plugs[PlugType._06]
-    
+
     @property
     def _07_plugs(self) -> typing.List[Plug]: # unused
         return self._plugs[PlugType._07]
-    
+
     @property
     def _08_plugs(self) -> typing.List[Plug]: # unused
         return self._plugs[PlugType._08]
-    
+
     @property
     def _09_plugs(self) -> typing.List[Plug]: # unused
         return self._plugs[PlugType._09]
-    
+
     def get_plugs(self, plug_type: PlugType) -> typing.List[Plug]:
         return self._plugs[plug_type]
-    
+
     def has_inputs(self) -> bool:
         return self.params.has_inputs()
-    
+
     def has_outputs(self) -> bool:
         return self.params.has_outputs()
 
@@ -1044,7 +1052,7 @@ class Node:
                 base_index: int = reader.read_u32()
                 count: int = reader.read_u32()
                 node.properties._properties[p_type] = properties.get_properties(p_type)[base_index:base_index+count]
-            
+
             for p_type in ParamType:
                 base_input_index: int = reader.read_u32()
                 input_count: int = reader.read_u32()
@@ -1053,7 +1061,7 @@ class Node:
                 base_output_index: int = reader.read_u32()
                 output_count: int = reader.read_u32()
                 node.params._outputs[p_type] = io_params.get_outputs(p_type)[base_output_index:base_output_index+output_count]
-            
+
             plug_info: typing.List[PlugInfo] = [
                 PlugInfo(reader.read_u8(), reader.read_u8()) for plug_type in PlugType
             ]
@@ -1071,7 +1079,7 @@ class Node:
         node.actions = actions.get(node.index, [])
 
         return node
-    
+
     def _read_plug(self, reader: AINBReader, offset: int, plug_type: PlugType, is_last: bool, trans_info_list: typing.List[Transition]) -> Plug:
         reader.seek(offset)
         if plug_type == PlugType.Generic:
@@ -1111,7 +1119,7 @@ class Node:
                 return GenericPlug._read(reader)
         else:
             raise ParseError(reader, f"Unsupported plug type: {plug_type}")
-    
+
     def _as_dict(self) -> JSONType:
         if self.state_info is not None:
             return {
@@ -1214,7 +1222,7 @@ class Node:
         if "State Info" in data:
             node.state_info = StateInfo._from_dict(data["State Info"])
         return node
-    
+
     def _preprocess(self, ctx: WriteContext) -> None:
         ctx.node_param_offsets.append(ctx.curr_node_param_offset)
         ctx.curr_node_param_offset += 0xa4 + sum(plug.get_size() + 4 for plug_type in PlugType for plug in self.get_plugs(plug_type))
@@ -1259,7 +1267,7 @@ class Node:
             ctx.queries.extend(ctx.query_map[i] for i in self.queries)
         else:
             ctx.query_base_indices.append(0)
-        
+
         ctx.actions.extend((self.index, action.action_slot, action.action) for action in self.actions)
 
         ctx.base_attachment_indices.append(ctx.curr_attachment_index)
@@ -1270,7 +1278,7 @@ class Node:
             else:
                 ctx.attachment_indices.append(len(ctx.attachments))
                 ctx.attachments.append(attachment)
-        
+
         if self.state_info is not None:
             ctx.state_info.append(self.state_info)
 
@@ -1297,7 +1305,7 @@ class Node:
         else:
             writer.write_u32(0)
         writer.write_guid(self.guid)
-    
+
     def _write_params(self, writer: AINBWriter, ctx: WriteContext) -> None:
         for p_type in ParamType:
             prop_count: int = len(self.properties.get_properties(p_type))
@@ -1388,7 +1396,7 @@ class Node:
         raise ValueError(f"Input parameter '{param_name}' of type {param_type.name} not found in node.")
 
     def set_input_from_blackboard(self, param_type: ParamType, param_name: str, blackboard_index: int) -> None:
-        from ainb.param import ParamSource, ParamFlag
+        from ainb.param import ParamFlag, ParamSource
         for param in self.params.get_inputs(param_type):
             if param.name == param_name:
                 param.is_blackboard_input = True
@@ -1427,7 +1435,7 @@ class Node:
     def remove_attachment(self, name: str) -> None:
         """Removes an attachment by name."""
         self.attachments = [att for att in self.attachments if att.name != name]
-        
+
     def add_property(self, param_type: ParamType, name: str, default_value: typing.Any = None) -> "Property":
         """Adds a property (often used by attachments or specialized nodes)."""
         from ainb.property import Property
@@ -1436,7 +1444,7 @@ class Node:
         prop.default_value = default_value
         self.properties.get_properties(param_type).append(prop)
         return prop
-    
+
     # ==========================================
     # EDITING API: ACTIONS AND QUERIES
     # ==========================================
@@ -1466,12 +1474,12 @@ class Node:
         """Adds a transition to another state/node."""
         from ainb.node import TransitionPlug
         from ainb.transition import Transition
-        
+
         plug = TransitionPlug()
         plug.node_index = target_node_index
         plug.transition = Transition(
-            transition_type=0 if command_name else 1, 
-            update_post_calc=update_post_calc, 
+            transition_type=0 if command_name else 1,
+            update_post_calc=update_post_calc,
             command_name=command_name
         )
         self._plugs[PlugType.Transition].append(plug)
@@ -1495,15 +1503,15 @@ class Node:
 
         Supports multi-source inputs by appending new unique sources.
         """
-        from ainb.param_common import ParamType
         from ainb.param import ParamSource
-        
+        from ainb.param_common import ParamType
+
         # Match case-insensitive (e.g., 'F32', 'S32', 'String' coming from the adapter)
         try:
             ptype = next(pt for pt in ParamType if pt.name.lower() == param_type_name.lower())
         except StopIteration:
             raise ValueError(f"Unknown parameter type: {param_type_name}")
-            
+
         inputs = self.params.get_inputs(ptype)
         if 0 <= param_index < len(inputs):
             param = inputs[param_index]

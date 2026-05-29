@@ -35,7 +35,7 @@ class ExpressionModule:
         Load an ExpressionModule from the provided binary reader
         """
         self: ExpressionModule = cls()
-        
+
         magic: str = reader.read(4).decode()
         if magic != "EXB ":
             raise ParseError(reader, f"Invalid EXB section magic, expected \"EXB \" but got {magic}")
@@ -89,7 +89,7 @@ class ExpressionModule:
             return cls.read(ExpressionReader(io.BytesIO(memoryview(data)), name = reader_name))
         else:
             return cls.read(ExpressionReader(data, name = reader_name))
-    
+
     @staticmethod
     def _format_expression(expression: Expression, index: int) -> str:
         return f".expression{index}\n{expression._format()}"
@@ -102,7 +102,7 @@ class ExpressionModule:
         Converts this expression module into its corresponding disassembled source
         """
         return f".version {self.version}\n\n{self._format_expressions()}"
-    
+
     def as_dict(self) -> JSONType:
         """
         Returns the expression module in dictionary form
@@ -113,7 +113,7 @@ class ExpressionModule:
                 expr._as_dict(i) for i, expr in enumerate(self.expressions)
             ],
         }
-    
+
     @classmethod
     def from_dict(cls, data: JSONType) -> "ExpressionModule":
         """
@@ -125,7 +125,7 @@ class ExpressionModule:
             Expression._from_dict(expr) for expr in data["Expressions"]
         ]
         return self
-    
+
     def build_context(self, instance_count: int) -> ExpressionWriteContext:
         ctx: ExpressionWriteContext = ExpressionWriteContext()
         ctx.version = self.version
@@ -158,11 +158,11 @@ class ExpressionModule:
         writer.write_u32(len(self.expressions))
         for i, expr in enumerate(self.expressions):
             expr._write(writer, ctx, i)
-        
+
         writer.write_u32(ctx.instruction_count)
         for expr in self.expressions:
             expr._write_instructions(writer, ctx)
-        
+
         writer.write_u32(len(ctx.signature_table))
         for off in ctx.signature_table:
             writer.write_u32(off)
@@ -179,7 +179,7 @@ class ExpressionModule:
                     writer.write_string_offset(value)
                 case builtins.tuple:
                     writer.write_vec3(value)
-        
+
         writer.write_string_pool()
 
     def to_binary(self, ctx: ExpressionWriteContext) -> bytes:

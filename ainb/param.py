@@ -2,8 +2,9 @@ import dataclasses
 import typing
 
 from ainb.common import AINBReader, AINBWriter
-from ainb.param_common import ParamType, ParamFlag
+from ainb.param_common import ParamFlag, ParamType
 from ainb.utils import DictDecodeError, JSONType, ParseError, SerializeError, ValueType
+
 
 @dataclasses.dataclass(slots=True)
 class ParamSource:
@@ -22,15 +23,15 @@ class ParamSource:
     @property
     def is_multi(self) -> bool:
         return self.src_node_index <= -100
-    
+
     @property
     def multi_index(self) -> int:
         return -100 - self.src_node_index
-    
+
     @property
     def multi_count(self) -> int:
         return self.src_output_index
-    
+
     def _as_dict(self) -> JSONType:
         return {
             "Node Index" : self.src_node_index,
@@ -42,10 +43,10 @@ class ParamSource:
         return cls(
             data["Node Index"], data["Output Index"], ParamFlag._from_dict(data)
         )
-    
+
     def is_expression(self) -> bool:
         return self.flags.is_expression()
-    
+
     def is_blackboard(self) -> bool:
         return self.flags.is_blackboard()
 
@@ -116,11 +117,11 @@ class InputParam:
                 if val == 0:
                     return None
                 raise ParseError(reader, f"Non-zero default value for a pointer input parameter: {val}")
-    
+
     @staticmethod
     def _get_binary_size(param_type: ParamType) -> int:
         return INPUT_PARAM_SIZES[param_type]
-    
+
     def _as_dict(self) -> JSONType:
         output: JSONType = {
             "Name" : self.name,
@@ -135,7 +136,7 @@ class InputParam:
         if self.is_blackboard_input:
             output["Is Set Blackboard"] = True
         return output
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType, param_type: ParamType) -> "InputParam":
         _input: InputParam = cls(param_type)
@@ -224,7 +225,7 @@ class OutputParam:
             output.classname = reader.read_string_offset()
         output.is_output = (flags >> 0x1f & 1) != 0
         return output
-    
+
     def _as_dict(self) -> JSONType:
         if self.type == ParamType.Pointer:
             return {
@@ -237,7 +238,7 @@ class OutputParam:
                 "Name" : self.name,
                 "Is Output" : self.is_output,
             }
-        
+
     @classmethod
     def _from_dict(cls, data: JSONType, param_type: ParamType) -> "OutputParam":
         output: OutputParam = cls(param_type)
@@ -246,7 +247,7 @@ class OutputParam:
             output.classname = data["Classname"]
         output.is_output = data["Is Output"]
         return output
-    
+
     def _write(self, writer: AINBWriter, param_type: ParamType) -> None:
         if self.is_output:
             writer.write_u32(writer.add_string(self.name) | 0x80000000)
@@ -312,19 +313,19 @@ class ParamSet:
     @property
     def ptr_outputs(self) -> typing.List[OutputParam]:
         return self._outputs[ParamType.Pointer]
-    
+
     def get_inputs(self, param_type: ParamType) -> typing.List[InputParam]:
         return self._inputs[param_type]
-    
+
     def get_outputs(self, param_type: ParamType) -> typing.List[OutputParam]:
         return self._outputs[param_type]
-    
+
     def has_inputs(self) -> bool:
         return any(p for p in self._inputs)
 
     def has_outputs(self) -> bool:
         return any(p for p in self._outputs)
-    
+
     @classmethod
     def _read(cls, reader: AINBReader, end_offset: int, multi_params: typing.List[ParamSource]) -> "ParamSet":
         pset: ParamSet = cls()
@@ -355,7 +356,7 @@ class ParamSet:
     @staticmethod
     def _read_io_header(reader: AINBReader) -> OffsetInfo:
         return OffsetInfo(*reader.unpack("<2I"))
-    
+
     def _as_dict(self) -> JSONType:
         return {
             "Inputs" : {
@@ -365,7 +366,7 @@ class ParamSet:
                 p_type.name : [ param._as_dict() for param in self.get_outputs(p_type) ] for p_type in ParamType if self.get_outputs(p_type)
             },
         }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "ParamSet":
         pset: ParamSet = cls()
@@ -379,17 +380,17 @@ class ParamSet:
                     OutputParam._from_dict(param, p_type) for param in data["Outputs"][p_type.name]
                 ]
         return pset
-    
+
     def clear_inputs(self) -> None:
         self._inputs = [[], [], [], [], [], []]
-    
+
     def clear_outputs(self) -> None:
         self._outputs = [[], [], [], [], [], []]
-    
+
     def clear(self) -> None:
         self.clear_inputs()
         self.clear_outputs()
-    
+
     def _write(self, writer: AINBWriter, multi_params: typing.List[ParamSource]) -> None:
         offset: int = writer.tell() + 0x30
         for p_type in ParamType:

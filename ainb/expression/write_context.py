@@ -4,6 +4,7 @@ import typing
 from ainb.expression.common import ExpressionWriter
 from ainb.utils import ValueType
 
+
 class Sizes(typing.NamedTuple):
     global_mem: int
     local32_mem: int

@@ -3,8 +3,9 @@ import os
 import typing
 
 from ainb.common import AINBReader, AINBWriter
-from ainb.utils import calc_hash, DictDecodeError, IntEnumEx, JSONType, SerializeWarning, ValueType
+from ainb.utils import DictDecodeError, IntEnumEx, JSONType, SerializeWarning, ValueType, calc_hash
 from ainb.write_context import WriteContext
+
 
 class BBParamType(IntEnumEx):
     """
@@ -59,7 +60,7 @@ class BBParam:
                 "Flags" : self.flags,
                 "Default Value" : self.default_value,
             }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType, param_type: BBParamType) -> "BBParam":
         param: BBParam = cls(param_type)
@@ -86,7 +87,7 @@ class BBParam:
                 if param.default_value is not None:
                     raise DictDecodeError("Pointer params must have a default value of null")
         return param
-    
+
     def _calc_size(self, file_refs: typing.Set[str]) -> int:
         if self.file_ref != "" and self.file_ref not in file_refs:
             file_refs.add(self.file_ref)
@@ -144,7 +145,7 @@ class Blackboard:
     @property
     def void_ptr_params(self) -> typing.List[BBParam]:
         return self._params[BBParamType.VoidPtr]
-    
+
     def get_params(self, param_type: BBParamType) -> typing.List[BBParam]:
         return self._params[param_type]
 
@@ -180,7 +181,7 @@ class Blackboard:
         res: BBParamHeader = BBParamHeader(reader.read_u16(), reader.read_u16(), reader.read_u16())
         _ = reader.read_u16() # padding
         return res
-    
+
     @staticmethod
     def _read_bb_param(reader: AINBReader) -> BBParamInfo:
         flags: int = reader.read_u32()
@@ -198,7 +199,7 @@ class Blackboard:
                 reader.read_string_offset(),            # param notes
                 flags >> 0x16 & 3                       # flags
             )
-        
+
     @staticmethod
     def _read_bb_param_value(reader: AINBReader, param_type: BBParamType) -> ValueType:
         match param_type:
@@ -237,12 +238,12 @@ class Blackboard:
             with reader.temp_seek(file_ref_offset + 0x10 * info.file_ref_index):
                 param.file_ref = Blackboard._read_file_reference(reader)
         return param
-    
+
     def _as_dict(self) -> JSONType:
         return {
             p_type.name : [ param._as_dict(i) for i, param in enumerate(self.get_params(p_type)) ] for p_type in BBParamType if self.get_params(p_type)
         }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "Blackboard":
         bb: Blackboard = cls()

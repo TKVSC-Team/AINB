@@ -2,6 +2,7 @@ import dataclasses
 
 from ainb.utils import JSONType
 
+
 @dataclasses.dataclass(slots=True)
 class Action:
     """
@@ -16,7 +17,7 @@ class Action:
             "Action Slot" : self.action_slot,
             "Action" : self.action,
         }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "Action":
         return cls(data["Action Slot"], data["Action"])

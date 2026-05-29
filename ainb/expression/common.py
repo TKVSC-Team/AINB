@@ -3,6 +3,7 @@ import typing
 
 from ainb.utils import Endian, ReaderWithStrPool, Vector3f, WriterWithStrPool
 
+
 class ExpressionParseError(Exception):
     def __init__(self, msg: str) -> None:
         super().__init__(f"An error occurred while parsing the expression: {msg}")
@@ -32,34 +33,34 @@ class ExpressionReader(ReaderWithStrPool):
 
     def set_signatures(self, signatures: typing.List[str]) -> None:
         self._signatures = signatures
-    
+
     def read_bool_param_table(self, offset: int) -> bool:
         with self.temp_seek(self._param_table_offset + offset):
             return self.read_u32() != 0
-    
+
     def read_s32_param_table(self, offset: int) -> int:
         with self.temp_seek(self._param_table_offset + offset):
             return self.read_s32()
-    
+
     def read_u32_param_table(self, offset: int) -> int:
         with self.temp_seek(self._param_table_offset + offset):
             return self.read_u32()
-    
+
     def read_f32_param_table(self, offset: int) -> float:
         with self.temp_seek(self._param_table_offset + offset):
             return self.read_f32()
-    
+
     def read_vec3_param_table(self, offset: int) -> Vector3f:
         with self.temp_seek(self._param_table_offset + offset):
             return self.read_vec3()
-    
+
     def read_string_param_table(self, offset: int) -> str:
         with self.temp_seek(self._param_table_offset + offset):
             return self.read_string_offset()
 
     def get_signature(self, index: int) -> str:
         return self._signatures[index]
-    
+
 class ExpressionWriter(WriterWithStrPool):
     """
     Expression writer

@@ -2,6 +2,7 @@ import enum
 
 from ainb.utils import IntEnumEx, JSONType
 
+
 class ParamType(IntEnumEx):
     """
     Parameter type enum
@@ -34,7 +35,7 @@ class ParamFlag(int):
         Returns True if this parameter uses the provided default value (aka the value is constant)
         """
         return self & 0x800000 != 0
-    
+
     # this is definitely wrong but I don't have anything else to call it so whatever
     def is_output(self) -> bool:
         """
@@ -43,19 +44,19 @@ class ParamFlag(int):
         Note this method name is definitely wrong
         """
         return self & 0x1000000 != 0
-    
+
     def is_expression(self) -> bool:
         """
         Returns True if this parameter derives its value from an expression
         """
         return self & 0xc2000000 == 0xc2000000
-    
+
     def is_blackboard(self) -> bool:
         """
         Returns True if this parameter derives its value from a blackboard parameter
         """
         return self & 0xc2000000 != 0xc2000000 and self & 0xc2000000 != 0
-    
+
     def get_vector_component(self) -> VectorComponent:
         """
         Returns the vector component (X, Y, Z, or NONE) associated with this parameter
@@ -67,19 +68,19 @@ class ParamFlag(int):
         Otherwise -> the parameter's value is from the corresponding component of a vec3f blackboard parameter
         """
         return VectorComponent(self >> 0x1a & 3)
-    
+
     def get_index(self) -> int:
         """
         Returns the index associated with this parameter (only used for expressions and blackboard parameters)
         """
         return self & 0xffff
-    
+
     def set_uses_default(self, b: bool = True) -> "ParamFlag":
         """
         Set whether or not this parameter uses the provided default value (aka the value is constant)
         """
         return ParamFlag(self & 0xff7fffff | int(b) << 0x17)
-    
+
     def set_output(self, b: bool = True) -> "ParamFlag":
         """
         Set whether or not this parameter has bit 0 of its pointer set
@@ -87,19 +88,19 @@ class ParamFlag(int):
         Note this method name is definitely wrong
         """
         return ParamFlag(self & 0xfeffffff | int(b) << 0x18)
-    
+
     def set_expression(self, b: bool = True) -> "ParamFlag":
         """
         Set expression flag
         """
         return ParamFlag(self & 0x3dffffff | (0xc2000000 if b else 0))
-    
+
     def set_blackboard(self, b: bool = True) -> "ParamFlag":
         """
         Set blackboard flag
         """
         return ParamFlag(self & 0x3dffffff | (0x80000000 if b else 0))
-    
+
     def set_vector_component(self, comp: VectorComponent) -> "ParamFlag":
         """
         Set vector component flag
@@ -128,7 +129,7 @@ class ParamFlag(int):
             if comp != VectorComponent.NONE:
                 output["Vector Component"] = comp.name
         return output
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "ParamFlag":
         flag: ParamFlag = cls()

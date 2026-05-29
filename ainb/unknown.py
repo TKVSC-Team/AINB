@@ -2,6 +2,7 @@ import dataclasses
 
 from ainb.utils import JSONType
 
+
 @dataclasses.dataclass(slots=True)
 class UnknownSection0x58:
     description: str = ""
@@ -16,7 +17,7 @@ class UnknownSection0x58:
             "Unknown08" : self.unk08,
             "Unknown0C" : self.unk0c,
         }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "UnknownSection0x58":
         return cls(

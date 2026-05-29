@@ -7,6 +7,7 @@ from ainb.property import PropertySet
 from ainb.state import StateInfo
 from ainb.transition import Transition
 
+
 class WriteContext:
     def __init__(self) -> None:
         self.command_count: int = 0

@@ -3,6 +3,7 @@ import enum
 
 from ainb.utils import JSONType
 
+
 class ReplacementType(enum.Enum):
     Invalid = -1
     RemoveChild = 0
@@ -31,7 +32,7 @@ class ReplacementEntry:
         else:
             output["Attachment Index"] = self.replace_index
         return output
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "ReplacementEntry":
         t: ReplacementType = ReplacementType[data["Type"]]

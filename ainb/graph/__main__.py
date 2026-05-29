@@ -6,6 +6,7 @@ import sys
 import typing
 
 from ainb.ainb import AINB
+
 try:
     import ainb.graph as graph
 except ImportError as e:
@@ -71,11 +72,11 @@ def main() -> None:
 
     if args.outpath:
         os.makedirs(args.outpath, exist_ok=True)
-    
+
     in_file_type: str = args.intype.lower()
     if in_file_type == "":
         in_file_type = os.path.splitext(args.input_file_path)[1][1:]
-    
+
     expected_version: int | None = GAME_TO_VERSION_MAP.get(args.game, None)
 
     if args.game != "other":
@@ -92,16 +93,16 @@ def main() -> None:
                     AINB.set_enum_db(json.load(f))
             else:
                 print(f"Provided enum database path does not exist: {args.enum_db_path}")
-    
+
     ainb: AINB
     if in_file_type == "ainb":
         ainb = AINB.from_file(args.input_file_path, read_only=expected_version is None or expected_version < 0x407)
     else:
         ainb = AINB.from_json(args.input_file_path)
-    
+
     if not args.search_paths:
         args.search_paths = [os.path.dirname(args.input_file_path)]
-    
+
     if args.all_commands:
         graph.graph_all_commands(ainb, True, args.format, args.outpath, args.view, args.no_unflatten, args.stagger, args.dpi, args.node_sep, args.rank_sep, args.rank_dir, args.line_type, args.split_blackboard)
     elif args.all_nodes:
@@ -113,7 +114,7 @@ def main() -> None:
     elif args.modules:
         graph.graph_modules(ainb, True, args.format, args.outpath, args.view, args.no_unflatten, args.stagger, args.dpi, args.node_sep, args.rank_sep, args.rank_dir, args.line_type, args.search_paths)
     else:
-        print(f"Please specify an entry point with either --node-index, --command-name, --all-nodes, or --all-commands")
+        print("Please specify an entry point with either --node-index, --command-name, --all-nodes, or --all-commands")
 
 if __name__ == "__main__":
     main()

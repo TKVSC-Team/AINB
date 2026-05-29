@@ -1,10 +1,16 @@
 import typing
 
-from ainb.expression.common import ExpressionReader, ExpressionWriter, ExpressionPreProcessError, ExpressionSerializeError
-from ainb.expression.instruction import InstType, InstDataType, InstructionBase, Sizes
+from ainb.expression.common import (
+    ExpressionPreProcessError,
+    ExpressionReader,
+    ExpressionSerializeError,
+    ExpressionWriter,
+)
+from ainb.expression.instruction import InstDataType, InstructionBase, InstType, Sizes
 from ainb.expression.parser import parse_instruction
 from ainb.expression.write_context import ExpressionWriteContext
 from ainb.utils import JSONType
+
 
 class Expression:
     """
@@ -19,7 +25,7 @@ class Expression:
 
         self.input_datatype: InstDataType = InstDataType.NONE
         self.output_datatype: InstDataType = InstDataType.NONE
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader, instructions: typing.List[InstructionBase]) -> "Expression":
         expr: Expression = cls()
@@ -67,7 +73,7 @@ class Expression:
         # TODO: verify input/output types match with actual instructions
 
         return expr
-    
+
     @staticmethod
     def _format_instruction(instruction: InstructionBase, addr: int) -> str:
         return f"{addr:#06x}    {instruction.format()}"
@@ -79,13 +85,13 @@ class Expression:
     @staticmethod
     def _format_instructions_single_indent(instructions: typing.List[InstructionBase]) -> str:
         return "\n".join(f"    {Expression._format_instruction(inst, i * 8)}" for i, inst in enumerate(instructions))
-    
+
     def _format(self) -> str:
         if self.setup_command:
             return f"    .setup\n{self._format_instructions(self.setup_command)}\n    .main\n{self._format_instructions(self.main_command)}\n"
         else:
             return f"    .main\n{self._format_instructions(self.main_command)}\n"
-    
+
     def format(self) -> str:
         """
         Returns a formatted string of the expression
@@ -94,7 +100,7 @@ class Expression:
             return f".setup\n{self._format_instructions_single_indent(self.setup_command)}\n.main\n{self._format_instructions_single_indent(self.main_command)}\n"
         else:
             return f".main\n{self._format_instructions_single_indent(self.main_command)}\n"
-    
+
     def _as_dict(self, index: int) -> JSONType:
         if self.setup_command:
             return {
@@ -111,7 +117,7 @@ class Expression:
                 "Output Type" : self.output_datatype.name,
                 "Main" : [self._format_instruction(inst, i * 8) for i, inst in enumerate(self.main_command)],
             }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "Expression":
         expr: Expression = cls()
@@ -125,7 +131,7 @@ class Expression:
             parse_instruction(inst) for inst in data["Main"]
         ]
         return expr
-    
+
     def _write(self, writer: ExpressionWriter, ctx: ExpressionWriteContext, index: int) -> None:
         writer.write_s32(ctx.base_setup_indices[index])
         if ctx.version > 1:
@@ -155,7 +161,7 @@ class Expression:
             inst._write(writer, ctx)
         for inst in self.main_command:
             inst._write(writer, ctx)
-    
+
     @staticmethod
     def _process_instructions(ctx: ExpressionWriteContext, cmds: typing.List[InstructionBase], is_setup: bool = False) -> Sizes:
         if is_setup:

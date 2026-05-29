@@ -1,7 +1,7 @@
 import typing
 
 from ainb.common import AINBReader, AINBWriter
-from ainb.param_common import ParamType, ParamFlag
+from ainb.param_common import ParamFlag, ParamType
 from ainb.utils import DictDecodeError, JSONType, ValueType
 
 PROPERTY_SIZES: typing.Final[typing.Dict[ParamType, int]] = {
@@ -52,11 +52,11 @@ class Property:
                 return reader.read_vec3()
             case ParamType.Pointer:
                 return None
-            
+
     @staticmethod
     def _get_binary_size(param_type: ParamType) -> int:
         return PROPERTY_SIZES[param_type]
-    
+
     def _as_dict(self) -> JSONType:
         if self.type == ParamType.Pointer:
             return {
@@ -69,7 +69,7 @@ class Property:
                 "Name" : self.name,
                 "Default Value" : self.default_value,
             } | self.flags._as_dict()
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType, param_type: ParamType) -> "Property":
         prop: Property = cls(param_type)
@@ -93,7 +93,7 @@ class Property:
                     raise DictDecodeError("Pointer properties must have a default value of null")
         prop.flags = ParamFlag._from_dict(data)
         return prop
-    
+
     def _write_value(self, writer: AINBWriter, param_type: ParamType) -> None:
         match param_type:
             case ParamType.Int:
@@ -108,7 +108,7 @@ class Property:
                 writer.write_vec3(self.default_value) # type: ignore
             case ParamType.Pointer:
                 pass
-    
+
     def _write(self, writer: AINBWriter, param_type: ParamType) -> None:
         writer.write_string_offset(self.name)
         if param_type == ParamType.Pointer:
@@ -131,27 +131,27 @@ class PropertySet:
     @property
     def int_properties(self) -> typing.List[Property]:
         return self._properties[ParamType.Int]
-    
+
     @property
     def bool_properties(self) -> typing.List[Property]:
         return self._properties[ParamType.Bool]
-    
+
     @property
     def float_properties(self) -> typing.List[Property]:
         return self._properties[ParamType.Float]
-    
+
     @property
     def string_properties(self) -> typing.List[Property]:
         return self._properties[ParamType.String]
-    
+
     @property
     def vec3f_properties(self) -> typing.List[Property]:
         return self._properties[ParamType.Vector3F]
-    
+
     @property
     def ptr_properties(self) -> typing.List[Property]:
         return self._properties[ParamType.Pointer]
-    
+
     def get_properties(self, param_type: ParamType) -> typing.List[Property]:
         return self._properties[param_type]
 
@@ -166,12 +166,12 @@ class PropertySet:
                     Property._read(reader, p_type) for i in range(int((end_offsets[p_type] - offsets[p_type]) / Property._get_binary_size(p_type)))
                 ]
         return pset
-    
+
     def _as_dict(self) -> JSONType:
         return {
             p_type.name : [ prop._as_dict() for prop in self.get_properties(p_type) ] for p_type in ParamType if self.get_properties(p_type)
         }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "PropertySet":
         pset: PropertySet = cls()
@@ -182,10 +182,10 @@ class PropertySet:
                 Property._from_dict(prop, p_type) for prop in data[p_type.name]
             ]
         return pset
-    
+
     def __bool__(self) -> bool:
         return any(p for p in self._properties)
-    
+
     def clear(self) -> None:
         self._properties = [[], [], [], [], [], []]
 

@@ -1,13 +1,21 @@
 import os
 import typing
 
-import graphviz # type: ignore
+import graphviz  # type: ignore
 
 from ainb.ainb import AINB
-from ainb.blackboard import BBParamType, BBParam
+from ainb.blackboard import BBParam, BBParamType
 from ainb.command import Command
 from ainb.expression import InstDataType
-from ainb.node import Node, NodeType, S32SelectorPlug, F32SelectorPlug, StringSelectorPlug, RandomSelectorPlug, get_null_index
+from ainb.node import (
+    F32SelectorPlug,
+    Node,
+    NodeType,
+    RandomSelectorPlug,
+    S32SelectorPlug,
+    StringSelectorPlug,
+    get_null_index,
+)
 from ainb.param import InputParam, OutputParam, ParamSource
 from ainb.param_common import ParamType
 from ainb.property import Property
@@ -135,7 +143,7 @@ class GraphNode:
                         <td port=\"{id}\">[{param_type.name}] {param.name} (default = {escape_value(param.default_value)}) </td>"
                     </tr>
                     """
-        
+
     @staticmethod
     def _format_output(id: str, param_type: ParamType, param: OutputParam) -> str:
         if param_type == ParamType.Pointer:
@@ -150,7 +158,7 @@ class GraphNode:
                         <td port=\"{id}\">[{param_type.name}] {param.name}</td>"
                     </tr>
                     """
-    
+
     @staticmethod
     def _format_property(param_type: ParamType, prop: Property) -> str:
         if param_type == ParamType.Pointer:
@@ -165,7 +173,7 @@ class GraphNode:
                         <td>[{param_type.name}] {prop.name} (default = {escape_value(prop.default_value)}) </td>"
                     </tr>
                     """
-    
+
     def _get_name(self) -> str:
         if self._node.type == NodeType.UserDefined:
             return f"{self._node.name} ({self._node.index})"
@@ -273,7 +281,7 @@ class Graph:
         for node in self.ainb.nodes:
             if node.type.value >= 200 and node.type.value < 300:
                 self.add_node(node)
-    
+
     @staticmethod
     def _format_bb_param(id: str, param: BBParam) -> str:
         if param.file_ref != "":
@@ -347,13 +355,13 @@ class Graph:
                 dot.edge(src_id, dst_id, edge.param_name, minlen="1", style="dashed", color=COLOR_MAP["query-edge"], fontcolor=COLOR_MAP["query-edge-font"])
             except Exception as e:
                 raise GraphError(f"Could not resolve edge: {edge}") from e
-    
+
     def _add_generic_edges(self, dot: graphviz.Digraph) -> None:
         for edge in self.generic_edges:
             node0: GraphNode = self.nodes[edge.node_index0]
             node1: GraphNode = self.nodes[edge.node_index1]
             dot.edge(node0.id, node1.id, edge.edge_name, minlen="1", style="bold", color=COLOR_MAP["generic-edge"], fontcolor=COLOR_MAP["generic-edge-font"])
-    
+
     def _add_transition_edges(self, dot: graphviz.Digraph) -> None:
         for edge in self.transition_edges:
             src_node: GraphNode = self.nodes[edge.src_node_index]
@@ -396,7 +404,7 @@ class Graph:
             root_id: str = get_id()
             dot.node(name=root_id, label=f"<<b>{self.root_name}</b>>", color=COLOR_MAP["entry-point-bg"], fontcolor=COLOR_MAP["entry-point-font"], shape="ellipse", style="filled")
             dot.edge(root_id, root_node.id)
-    
+
     def _process_param_source(self, node: Node, param_type: ParamType, param_index: int, param: InputParam, source: ParamSource) -> None:
         if isinstance(source, list):
             raise GraphError("Cannot have nested multi-params")
@@ -466,7 +474,7 @@ class Graph:
             if node.type == NodeType.Element_S32Selector:
                 s32_plug: S32SelectorPlug = typing.cast(S32SelectorPlug, plug)
                 self.generic_edges.add(
-                    GenericEdge(node.index, s32_plug.node_index, f"Default" if s32_plug.is_default else str(s32_plug.condition))
+                    GenericEdge(node.index, s32_plug.node_index, "Default" if s32_plug.is_default else str(s32_plug.condition))
                 )
             elif node.type == NodeType.Element_F32Selector:
                 f32_plug: F32SelectorPlug = typing.cast(F32SelectorPlug, plug)
@@ -652,11 +660,11 @@ def graph_all_nodes(ainb: AINB,
         line_type: Edge line type
         split_blackboard: Split Blackboard into separate nodes
     """
-    
+
     graph: Graph = Graph(ainb)
     for node in ainb.nodes:
         graph.add_node(node)
-    
+
     dot: graphviz.Digraph = graphviz.Digraph(ainb.filename, node_attr={"shape" : "rectangle"})
     dot.attr(nodesep=str(node_sep), ranksep=str(rank_sep), rankdir=rank_dir, bgcolor=COLOR_MAP["graph-bg"], spline=line_type)
     if output_format != "svg":
@@ -704,7 +712,7 @@ def graph_all_commands(ainb: AINB,
     dot.attr(nodesep=str(node_sep), ranksep=str(rank_sep), rankdir=rank_dir, bgcolor=COLOR_MAP["graph-bg"], splines=line_type)
     if output_format != "svg":
         dot.attr(dpi=str(dpi))
-    
+
     for cmd in ainb.commands:
         dot.subgraph(graph_command(ainb, cmd.name, render=False, node_sep=node_sep, rank_sep=rank_sep, rank_dir=rank_dir, line_type=line_type, split_blackboard=split_blackboard))
 
@@ -748,7 +756,7 @@ def graph_modules(ainb: AINB,
     dot.attr(nodesep=str(node_sep), ranksep=str(rank_sep), rankdir=rank_dir, bgcolor=COLOR_MAP["graph-bg"], splines=line_type)
     if output_format != "svg":
         dot.attr(dpi=str(dpi))
-    
+
     def normalize_name(name: str) -> str:
         return os.path.basename(name).replace(".ainb", "").replace(".json", "")
 
@@ -784,13 +792,13 @@ def graph_modules(ainb: AINB,
                 elif os.path.exists(os.path.join(path, module.path.replace(".ainb", ".json"))):
                     module_ainb = AINB.from_json(os.path.join(path, module.path.replace(".ainb", ".json")))
                     break
-            
+
             if module_ainb is None:
                 print(f"Warning: could not find file for {module.path}")
                 continue
-            
+
             process_file(module_ainb)
-    
+
     process_file(ainb, True)
 
     if render:

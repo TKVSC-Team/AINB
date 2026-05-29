@@ -2,9 +2,9 @@ import re
 
 from ainb.expression.common import ExpressionParseError
 from ainb.expression.instruction import (
+    INSTRUCTION_TABLE,
     InstructionBase,
     InstType,
-    INSTRUCTION_TABLE,
 )
 
 # this does not properly match custom function signatures, but those will be handled separate anyways

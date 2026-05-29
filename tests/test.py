@@ -7,6 +7,7 @@ import unittest
 import ainb
 import ainb.graph
 
+
 def fix_path(path: str) -> str:
     return os.path.join(os.path.dirname(os.path.realpath(__file__)), path)
 
@@ -25,7 +26,7 @@ class RoundtripTest(unittest.TestCase):
             except Exception as e:
                 self.fail(f"{file} failed: {e.args}")
             self.assertDictEqual(orig.as_dict(), new.as_dict(), f"{file} is mismatching")
-    
+
     def test_ainb_roundtrip(self) -> None:
         ainb.set_splatoon3()
         for file in os.listdir(INPUT_DIRECTORY):

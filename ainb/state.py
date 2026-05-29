@@ -2,6 +2,7 @@ import dataclasses
 
 from ainb.utils import JSONType
 
+
 @dataclasses.dataclass(slots=True)
 class StateInfo:
     """
@@ -24,7 +25,7 @@ class StateInfo:
             "Unknown0C" : self.unk0c,
             "Unknown10" : self.unk10,
         }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "StateInfo":
         return cls(

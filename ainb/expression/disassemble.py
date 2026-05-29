@@ -1,9 +1,10 @@
 from ainb.expression.common import ExpressionReader
 from ainb.expression.instruction import (
-    InstType,
-    InstructionBase,
     INSTRUCTION_TABLE,
+    InstructionBase,
+    InstType,
 )
+
 
 def disassemble(reader: ExpressionReader) -> InstructionBase:
     """

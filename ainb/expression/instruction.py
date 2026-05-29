@@ -4,7 +4,12 @@ import dataclasses
 import re
 import typing
 
-from ainb.expression.common import ExpressionParseError, ExpressionReader, ExpressionSerializeError, ExpressionWriter
+from ainb.expression.common import (
+    ExpressionParseError,
+    ExpressionReader,
+    ExpressionSerializeError,
+    ExpressionWriter,
+)
 from ainb.expression.write_context import ExpressionWriteContext
 from ainb.utils import EnumEx, ParseError, ParseWarning, ValueType
 
@@ -189,7 +194,7 @@ class Operand:
             return "z"
         else:
             raise ValueError(f"Invalid vector offset: {offset}")
-        
+
     @staticmethod
     def _format_value(value: ValueType) -> str:
         if value is None:
@@ -267,8 +272,8 @@ class Operand:
                 else:
                     self.value = raw
             case _:
-                raise ParseError(reader, f"Invalid operand type")
-    
+                raise ParseError(reader, "Invalid operand type")
+
     def _fixup_types(self, ctx: ExpressionWriteContext) -> None:
         if self.type not in IMMEDIATE_TYPES:
             return
@@ -327,15 +332,15 @@ class Operand:
         elif self.type == InstOpType.LocalMemory64:
             if self.datatype != InstDataType.STRING:
                 return False
-            
+
         return True
-    
+
     def _is_input(self) -> bool:
         return self.type == InstOpType.Input or self.type == InstOpType.ExpressionInput
-    
+
     def _is_value(self) -> bool:
         return self.type.is_immediate_value()
-    
+
     @classmethod
     def _parse_generic(cls, text: str) -> "Operand":
         op: Operand = cls()
@@ -403,7 +408,7 @@ class Operand:
                 case _:
                     raise ExpressionParseError(f"Invalid operand datatype: {op.datatype}")
         return op
-    
+
     def _write_value(self, writer: ExpressionWriter, ctx: ExpressionWriteContext) -> None:
         if self.type not in IMMEDIATE_TYPES:
             if self.type in [InstOpType.Input, InstOpType.Output]:
@@ -474,7 +479,7 @@ class InstructionBase(metaclass=abc.ABCMeta):
         else:
             reader.read(2)
         return op1, op2
-    
+
     @abc.abstractmethod
     def format(self) -> str:
         pass
@@ -491,7 +496,7 @@ class InstructionBase(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def _preprocess(self, ctx: ExpressionWriteContext, size: Sizes) -> None:
         pass
-    
+
 class SingleOpInstruction(InstructionBase):
     """
     Abstract base class for instructions which load a value and (maybe) modify it in place
@@ -506,19 +511,19 @@ class SingleOpInstruction(InstructionBase):
     def _read_ops(reader: ExpressionReader) -> Operand:
         op, _ = SingleOpInstruction._read_ops_impl(reader, True)
         return op
-    
+
     def _is_valid_dst_op(self) -> bool:
         return not self.op._is_input() and not self.op._is_value()
-    
+
     def format(self) -> str:
         return f"{self._type} {self.op.format()}"
-    
+
     @classmethod
     def _parse(cls, matches: re.Match[str]) -> "SingleOpInstruction":
         inst: SingleOpInstruction = cls() # type: ignore
         inst.op = Operand._parse_generic(matches.group("op1"))
         return inst
-    
+
     def _write(self, writer: ExpressionWriter, ctx: ExpressionWriteContext) -> None:
         writer.write_u8(self.get_type().value)
         writer.write_u8(convert_inst_data_type(ctx, self.op.datatype))
@@ -554,20 +559,20 @@ class DualOpInstruction(InstructionBase):
     @staticmethod
     def _read_ops(reader: ExpressionReader) -> typing.Tuple[Operand, Operand]:
         return DualOpInstruction._read_ops_impl(reader, False)
-    
+
     def _is_valid_dst_op(self) -> bool:
         return not self.op1._is_input() and not self.op1._is_value()
-    
+
     def format(self) -> str:
         return f"{self._type} {self.op1.format()}, {self.op2.format()}"
-    
+
     @classmethod
     def _parse(cls, matches: re.Match[str]) -> "DualOpInstruction":
         inst: DualOpInstruction = cls() # type: ignore
         inst.op1 = Operand._parse_generic(matches.group("op1"))
         inst.op2 = Operand._parse_generic(matches.group("op2"))
         return inst
-    
+
     def _write(self, writer: ExpressionWriter, ctx: ExpressionWriteContext) -> None:
         writer.write_u8(self.get_type().value)
         writer.write_u8(convert_inst_data_type(ctx, self.op1.datatype))
@@ -575,7 +580,7 @@ class DualOpInstruction(InstructionBase):
         writer.write_u8(self.op2.type.value)
         self.op1._write_value(writer, ctx)
         self.op2._write_value(writer, ctx)
-    
+
     def _preprocess(self, ctx: ExpressionWriteContext, size: Sizes) -> None:
         if typing.TYPE_CHECKING: # this should be inside the conditionals below, but that clutters it up too much
             assert isinstance(self.op1.value, int)
@@ -625,7 +630,7 @@ class EndInstruction(InstructionBase):
 
     def __init__(self) -> None:
         super().__init__(InstType.END)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.END
@@ -634,18 +639,18 @@ class EndInstruction(InstructionBase):
     def _read(cls, reader: ExpressionReader) -> "EndInstruction":
         _ = reader.read(7) # padding
         return cls()
-    
+
     def format(self) -> str:
         return "END"
-    
+
     @classmethod
     def _parse(cls, matches: re.Match[str]) -> "EndInstruction":
         return cls()
-    
+
     def _write(self, writer: ExpressionWriter, ctx: ExpressionWriteContext) -> None:
         writer.write_u8(self._type.value)
         writer.write(b"\x00" * 7)
-    
+
     def _preprocess(self, ctx: ExpressionWriteContext, size: Sizes) -> None:
         pass
 
@@ -662,7 +667,7 @@ class StoreInstruction(DualOpInstruction):
     @staticmethod
     def get_type() -> InstType:
         return InstType.STR
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "StoreInstruction":
         inst: StoreInstruction = cls()
@@ -675,7 +680,7 @@ class StoreInstruction(DualOpInstruction):
             ParseWarning(reader, f"Store instruction source operand ({inst.op2.datatype}) loaded from invalid source ({inst.op2.type})")
 
         return inst
-    
+
 class NegateInstruction(SingleOpInstruction):
     """
     Negation instruction
@@ -688,7 +693,7 @@ class NegateInstruction(SingleOpInstruction):
     @staticmethod
     def get_type() -> InstType:
         return InstType.NEG
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "NegateInstruction":
         inst: NegateInstruction = cls()
@@ -699,9 +704,9 @@ class NegateInstruction(SingleOpInstruction):
 
         if inst.op.datatype not in [InstDataType.INT, InstDataType.FLOAT, InstDataType.VECTOR3F]:
             ParseWarning(reader, f"Invalid datatype for negate instruction: {inst.op.datatype}")
-        
+
         return inst
-        
+
 class LogicalNotInstruction(SingleOpInstruction):
     """
     Logical NOT instruction
@@ -710,7 +715,7 @@ class LogicalNotInstruction(SingleOpInstruction):
     """
     def __init__(self) -> None:
         super().__init__(InstType.NOT)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.NOT
@@ -726,9 +731,9 @@ class LogicalNotInstruction(SingleOpInstruction):
         if inst.op.datatype != InstDataType.BOOL:
             # this is not a hard requirement as the game does not check the type and assumes it instead
             ParseWarning(reader, f"Logical NOT instruction does not have BOOL datatype: {inst.op.datatype}")
-        
+
         return inst
-    
+
 class AdditionInstruction(DualOpInstruction):
     """
     Addition instruction
@@ -738,7 +743,7 @@ class AdditionInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.ADD)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.ADD
@@ -768,7 +773,7 @@ class SubtractionInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.SUB)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.SUB
@@ -798,7 +803,7 @@ class MultiplicationInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.MUL)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.MUL
@@ -830,7 +835,7 @@ class DivisionInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.DIV)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.DIV
@@ -862,7 +867,7 @@ class ModulusInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.MOD)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.MOD
@@ -897,7 +902,7 @@ class IncrementInstruction(SingleOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.INC)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.INC
@@ -925,7 +930,7 @@ class DecrementInstruction(SingleOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.INC)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.INC
@@ -943,7 +948,7 @@ class DecrementInstruction(SingleOpInstruction):
             ParseWarning(reader, f"Decrement instruction does not have INT datatype: {inst.op.datatype}")
 
         return inst
-    
+
 class ScalarMultiplicationInstruction(DualOpInstruction):
     """
     Scalar multiplication of a vector
@@ -953,11 +958,11 @@ class ScalarMultiplicationInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.VMS)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.VMS
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "ScalarMultiplicationInstruction":
         inst: ScalarMultiplicationInstruction = cls()
@@ -980,7 +985,7 @@ class ScalarMultiplicationInstruction(DualOpInstruction):
             ParseWarning(reader, f"Scalar multiplication instruction does not have VECTOR3F datatype: {inst.op1.datatype}")
 
         return inst
-    
+
 class ScalarDivisionInstruction(DualOpInstruction):
     """
     Scalar division of a vector
@@ -990,11 +995,11 @@ class ScalarDivisionInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.VDS)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.VDS
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "ScalarDivisionInstruction":
         inst: ScalarDivisionInstruction = cls()
@@ -1017,7 +1022,7 @@ class ScalarDivisionInstruction(DualOpInstruction):
             ParseWarning(reader, f"Scalar division instruction does not have VECTOR3F datatype: {inst.op1.datatype}")
 
         return inst
-    
+
 class LeftShiftInstruction(DualOpInstruction):
     """
     Left shift instruction
@@ -1027,7 +1032,7 @@ class LeftShiftInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.LSH)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.LSH
@@ -1052,7 +1057,7 @@ class LeftShiftInstruction(DualOpInstruction):
             ParseWarning(reader, f"Left shift instruction does not have INT datatype: {inst.op2.datatype}")
 
         return inst
-    
+
 class RightShiftInstruction(DualOpInstruction):
     """
     Arithmetic right shift instruction
@@ -1062,7 +1067,7 @@ class RightShiftInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.RSH)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.RSH
@@ -1097,11 +1102,11 @@ class LessThanInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.LST)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.LST
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "LessThanInstruction":
         inst: LessThanInstruction = cls()
@@ -1109,16 +1114,16 @@ class LessThanInstruction(DualOpInstruction):
 
         if not inst._is_valid_dst_op():
             ParseWarning(reader, f"Less than instruction cannot store into {inst.op1.type}")
-        
+
         if not inst.op1._check_load_validity():
             ParseWarning(reader, f"Less than instruction value ({inst.op1.datatype}) loaded from invalid source ({inst.op1.type})")
 
         if not inst.op2._check_load_validity():
             ParseWarning(reader, f"Less than instruction value ({inst.op2.datatype}) loaded from invalid source ({inst.op2.type})")
-        
+
         if inst.op1.datatype not in [InstDataType.INT, InstDataType.UINT, InstDataType.FLOAT]:
             ParseWarning(reader, f"Invalid datatype for less than instruction: {inst.op1.datatype}")
-        
+
         return inst
 
 class LessThanEqualInstruction(DualOpInstruction):
@@ -1130,11 +1135,11 @@ class LessThanEqualInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.LTE)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.LTE
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "LessThanEqualInstruction":
         inst: LessThanEqualInstruction = cls()
@@ -1142,16 +1147,16 @@ class LessThanEqualInstruction(DualOpInstruction):
 
         if not inst._is_valid_dst_op():
             ParseWarning(reader, f"Less than equal instruction cannot store into {inst.op1.type}")
-        
+
         if not inst.op1._check_load_validity():
             ParseWarning(reader, f"Less than equal instruction value ({inst.op1.datatype}) loaded from invalid source ({inst.op1.type})")
 
         if not inst.op2._check_load_validity():
             ParseWarning(reader, f"Less than equal instruction value ({inst.op2.datatype}) loaded from invalid source ({inst.op2.type})")
-        
+
         if inst.op1.datatype not in [InstDataType.INT, InstDataType.UINT, InstDataType.FLOAT]:
             ParseWarning(reader, f"Invalid datatype for less than equal instruction: {inst.op1.datatype}")
-        
+
         return inst
 
 class GreaterThanInstruction(DualOpInstruction):
@@ -1163,11 +1168,11 @@ class GreaterThanInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.GRT)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.GRT
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "GreaterThanInstruction":
         inst: GreaterThanInstruction = cls()
@@ -1175,16 +1180,16 @@ class GreaterThanInstruction(DualOpInstruction):
 
         if not inst._is_valid_dst_op():
             ParseWarning(reader, f"Greater than instruction cannot store into {inst.op1.type}")
-        
+
         if not inst.op1._check_load_validity():
             ParseWarning(reader, f"Greater than instruction value ({inst.op1.datatype}) loaded from invalid source ({inst.op1.type})")
 
         if not inst.op2._check_load_validity():
             ParseWarning(reader, f"Greater than instruction value ({inst.op2.datatype}) loaded from invalid source ({inst.op2.type})")
-        
+
         if inst.op1.datatype not in [InstDataType.INT, InstDataType.UINT, InstDataType.FLOAT]:
             ParseWarning(reader, f"Invalid datatype for greater than instruction: {inst.op1.datatype}")
-        
+
         return inst
 
 class GreaterThanEqualInstruction(DualOpInstruction):
@@ -1196,11 +1201,11 @@ class GreaterThanEqualInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.GTE)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.GTE
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "GreaterThanEqualInstruction":
         inst: GreaterThanEqualInstruction = cls()
@@ -1208,16 +1213,16 @@ class GreaterThanEqualInstruction(DualOpInstruction):
 
         if not inst._is_valid_dst_op():
             ParseWarning(reader, f"Greater than equal instruction cannot store into {inst.op1.type}")
-        
+
         if not inst.op1._check_load_validity():
             ParseWarning(reader, f"Greater than equal instruction value ({inst.op1.datatype}) loaded from invalid source ({inst.op1.type})")
 
         if not inst.op2._check_load_validity():
             ParseWarning(reader, f"Greater than equal instruction value ({inst.op2.datatype}) loaded from invalid source ({inst.op2.type})")
-        
+
         if inst.op1.datatype not in [InstDataType.INT, InstDataType.UINT, InstDataType.FLOAT]:
             ParseWarning(reader, f"Invalid datatype for greater than equal instruction: {inst.op1.datatype}")
-        
+
         return inst
 
 class EqualityInstruction(DualOpInstruction):
@@ -1229,11 +1234,11 @@ class EqualityInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.EQL)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.EQL
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "EqualityInstruction":
         inst: EqualityInstruction = cls()
@@ -1241,13 +1246,13 @@ class EqualityInstruction(DualOpInstruction):
 
         if not inst._is_valid_dst_op():
             ParseWarning(reader, f"Equality instruction cannot store into {inst.op1.type}")
-        
+
         if not inst.op1._check_load_validity():
             ParseWarning(reader, f"Equality instruction value ({inst.op1.datatype}) loaded from invalid source ({inst.op1.type})")
 
         if not inst.op2._check_load_validity():
             ParseWarning(reader, f"Equality instruction value ({inst.op2.datatype}) loaded from invalid source ({inst.op2.type})")
-        
+
         return inst
 
 class InequalityInstruction(DualOpInstruction):
@@ -1259,11 +1264,11 @@ class InequalityInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.NEQ)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.NEQ
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "InequalityInstruction":
         inst: InequalityInstruction = cls()
@@ -1271,13 +1276,13 @@ class InequalityInstruction(DualOpInstruction):
 
         if not inst._is_valid_dst_op():
             ParseWarning(reader, f"Inequality instruction cannot store into {inst.op1.type}")
-        
+
         if not inst.op1._check_load_validity():
             ParseWarning(reader, f"Inequality instruction value ({inst.op1.datatype}) loaded from invalid source ({inst.op1.type})")
 
         if not inst.op2._check_load_validity():
             ParseWarning(reader, f"Inequality instruction value ({inst.op2.datatype}) loaded from invalid source ({inst.op2.type})")
-        
+
         return inst
 
 class ANDInstruction(DualOpInstruction):
@@ -1289,7 +1294,7 @@ class ANDInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.AND)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.AND
@@ -1324,7 +1329,7 @@ class XORInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.XOR)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.XOR
@@ -1359,7 +1364,7 @@ class ORInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.ORR)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.ORR
@@ -1394,7 +1399,7 @@ class LogicalANDInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.LAN)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.LAN
@@ -1429,7 +1434,7 @@ class LogicalORInstruction(DualOpInstruction):
 
     def __init__(self) -> None:
         super().__init__(InstType.LOR)
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.LOR
@@ -1467,11 +1472,11 @@ class CallFunctionInstruction(InstructionBase):
         self.datatype: InstDataType = InstDataType.NONE # return type
         self.args_offset: int = 0                       # offset into global memory of function arguments
         self.func_signature: str = ""                   # function signature
-    
+
     @staticmethod
     def get_type() -> InstType:
         return InstType.CFN
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "CallFunctionInstruction":
         inst: CallFunctionInstruction = cls()
@@ -1482,10 +1487,10 @@ class CallFunctionInstruction(InstructionBase):
         # TODO: check return types match
 
         return inst
-    
+
     def format(self) -> str:
         return f"CFN {self.func_signature}, GMem[{self.args_offset:#x}]"
-    
+
     @classmethod
     def _parse(cls, matches: re.Match[str]) -> "CallFunctionInstruction":
         inst: CallFunctionInstruction = cls()
@@ -1500,7 +1505,7 @@ class CallFunctionInstruction(InstructionBase):
         else:
             inst.args_offset = int(offset)
         return inst
-    
+
     def _write(self, writer: ExpressionWriter, ctx: ExpressionWriteContext) -> None:
         writer.write_u8(self.get_type().value)
         writer.write_u8(convert_inst_data_type(ctx, self.datatype))
@@ -1526,7 +1531,7 @@ class JumpIfZeroInstruction(JumpInstructionBase):
     @staticmethod
     def get_type() -> InstType:
         return InstType.JZE
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "JumpIfZeroInstruction":
         inst: JumpIfZeroInstruction = cls()
@@ -1538,16 +1543,16 @@ class JumpIfZeroInstruction(JumpInstructionBase):
 
         if not inst.condition._check_load_validity():
             ParseWarning(reader, f"Jump if zero instruction condition ({inst.condition.datatype}) loaded from invalid source ({inst.condition.type})")
-        
+
         if inst.condition.datatype not in [InstDataType.BOOL, InstDataType.NONE]: # game uses NONE normally
             # this is not a hard requirement as the game does not check the type and assumes it instead
             ParseWarning(reader, f"Jump if zero instruction condition does not have BOOL datatype: {inst.condition.datatype}")
 
         return inst
-    
+
     def format(self) -> str:
         return f"JZE {self.condition.format()}, {self.jump_address:#x}"
-    
+
     @classmethod
     def _parse(cls, matches: re.Match[str]) -> "JumpIfZeroInstruction":
         inst: JumpIfZeroInstruction = cls()
@@ -1558,7 +1563,7 @@ class JumpIfZeroInstruction(JumpInstructionBase):
         else:
             inst.jump_address = int(offset)
         return inst
-    
+
     def _write(self, writer: ExpressionWriter, ctx: ExpressionWriteContext) -> None:
         writer.write_u8(self.get_type().value)
         writer.write_u8(convert_inst_data_type(ctx, self.condition.datatype))
@@ -1566,7 +1571,7 @@ class JumpIfZeroInstruction(JumpInstructionBase):
         writer.write_u8(0)
         self.condition._write_value(writer, ctx)
         writer.write_u16(int(self.jump_address / 8))
-    
+
     def _preprocess(self, ctx: ExpressionWriteContext, size: Sizes) -> None:
         if typing.TYPE_CHECKING: # this should be inside the conditionals below, but that clutters it up too much
             assert isinstance(self.condition.value, int)
@@ -1591,7 +1596,7 @@ class JumpInstruction(JumpInstructionBase):
     @staticmethod
     def get_type() -> InstType:
         return InstType.JMP
-    
+
     @classmethod
     def _read(cls, reader: ExpressionReader) -> "JumpInstruction":
         inst: JumpInstruction = cls()
@@ -1599,10 +1604,10 @@ class JumpInstruction(JumpInstructionBase):
         inst.jump_address = reader.read_u16() * 8
 
         return inst
-    
+
     def format(self) -> str:
         return f"JMP {self.jump_address:#x}"
-    
+
     @classmethod
     def _parse(cls, matches: re.Match[str]) -> "JumpInstruction":
         inst: JumpInstruction = cls()
@@ -1612,7 +1617,7 @@ class JumpInstruction(JumpInstructionBase):
         else:
             inst.jump_address = int(offset)
         return inst
-    
+
     def _write(self, writer: ExpressionWriter, ctx: ExpressionWriteContext) -> None:
         writer.write_u8(self.get_type().value)
         writer.write_u8(InstDataType.NONE.value)
@@ -1620,7 +1625,7 @@ class JumpInstruction(JumpInstructionBase):
         writer.write_u8(0)
         writer.write_u16(0)
         writer.write_u16(int(self.jump_address / 8))
-    
+
     def _preprocess(self, ctx: ExpressionWriteContext, size: Sizes) -> None:
         pass
 

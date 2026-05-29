@@ -1,6 +1,7 @@
 from ainb.common import AINBReader, AINBWriter
 from ainb.utils import JSONType
 
+
 class Command:
     """
     Class representing an AI command
@@ -22,7 +23,7 @@ class Command:
         cmd.root_node_index = reader.read_u16()
         cmd.secondary_root_node_index = reader.read_u16() - 1
         return cmd
-    
+
     def _as_dict(self) -> JSONType:
         if self.secondary_root_node_index < 0:
             return {
@@ -37,7 +38,7 @@ class Command:
                 "Root Node Index" : self.root_node_index,
                 "Secondary Root Node Index" : self.secondary_root_node_index,
             }
-    
+
     @classmethod
     def _from_dict(cls, data: JSONType) -> "Command":
         cmd: Command = cls()
@@ -46,7 +47,7 @@ class Command:
         cmd.root_node_index = data["Root Node Index"]
         cmd.secondary_root_node_index = data.get("Secondary Root Node Index", -1)
         return cmd
-    
+
     def _write(self, writer: AINBWriter) -> None:
         writer.write_string_offset(self.name)
         writer.write_guid(self.guid)

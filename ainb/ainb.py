@@ -216,10 +216,10 @@ class AINB:
 
         if _x50 != transition_offset:
             ParseWarning(reader, "Section 0x50 of the header appears to exist")
-        
+
         if _x54 != 0:
             ParseWarning(reader, f"Offset 0x54 of the header is non-zero: {_x54}")
-        
+
         # this section only seems to appear in version 0x404, but it should be allowable in later versions
         if _x58 != 0:
             reader.seek(_x58)
@@ -240,7 +240,7 @@ class AINB:
             assert False
 
         return self
-    
+
     @classmethod
     def from_binary(cls, data: bytes | bytearray, reader_name: str = "AINB Reader") -> "AINB":
         """
@@ -269,7 +269,7 @@ class AINB:
                 return cls.read(AINBReader(infile, name = file_path))
             else:
                 return cls.read(AINBReader(io.BytesIO(memoryview(infile.read())), name = file_path))
-        
+
     @staticmethod
     def _read_enum_entry(reader: AINBReader) -> EnumEntry:
         return EnumEntry(
@@ -277,7 +277,7 @@ class AINB:
             classname = reader.read_string_offset(),
             value_name = reader.read_string_offset()
         )
-    
+
     @classmethod
     def _search_enum_db(cls, classname: str, value_name: str) -> int | None:
         enum_info: typing.Dict[str, int] = cls._ENUM_DB.get(classname, {})
@@ -314,13 +314,13 @@ class AINB:
         return [
             AINB._read_transition(reader, offset) for offset in offsets
         ]
-    
+
     @staticmethod
     def _read_query(reader: AINBReader) -> int:
         index: int = reader.read_u16()
         unk: int = reader.read_u16() # always 0, maybe padding? but why would it exist
         return index
-    
+
     @staticmethod
     def _read_action(reader: AINBReader, actions: typing.Dict[int, typing.List[Action]]) -> None:
         index: int = reader.read_s32()
@@ -336,7 +336,7 @@ class AINB:
             reader.read_string_offset(),
             reader.read_u32()
         )
-    
+
     @staticmethod
     def _read_replacement(reader: AINBReader) -> ReplacementEntry:
         replace_type: ReplacementType = ReplacementType(reader.read_u8())
@@ -347,7 +347,7 @@ class AINB:
             reader.read_s16(),
             reader.read_s16()
         )
-    
+
     def _fix_query_indices(self, node: Node, query_indices: typing.List[int]) -> None:
         node.queries = [query_indices[i] for i in node.queries]
 
@@ -355,7 +355,7 @@ class AINB:
     def _verify_enum_db(db: typing.Dict[str, typing.Dict[str, int]]) -> bool:
         if not isinstance(db, dict):
             return False
-        
+
         for enum_name, values in db.items():
             if not isinstance(enum_name, str):
                 return False
@@ -366,7 +366,7 @@ class AINB:
                     return False
                 if not isinstance(value, int):
                     return False
-        
+
         return True
 
     @classmethod
@@ -386,7 +386,7 @@ class AINB:
                 }
             }
         """
-        assert cls._verify_enum_db(new_db), f"Invalid database!"
+        assert cls._verify_enum_db(new_db), "Invalid database!"
         cls._ENUM_DB = new_db
 
     def as_dict(self) -> JSONType:
@@ -424,7 +424,7 @@ class AINB:
                 "Unknown Section 0x58" : self.unk_section0x58._as_dict() if self.unk_section0x58 is not None else {},
                 "Has Section 0x6C" : self.exists_section_0x6c,
             }
-    
+
     def save_json(self, output_path: str = "", override_filename: str = "") -> None:
         """
         Save AINB to JSON file
@@ -461,7 +461,7 @@ class AINB:
         if self.version > 0x404:
             if self.category not in FileCategory.__members__:
                 raise DictDecodeError(f"Unknown file category: {self.category}")
-        
+
         self.blackboard_id = data["Blackboard ID"]
         self.parent_blackboard_id = data["Parent Blackboard ID"]
 
@@ -475,7 +475,7 @@ class AINB:
 
         if (bb := data.get("Blackboard", {})) != {}:
             self.blackboard = Blackboard._from_dict(bb)
-        
+
         if (expr := data.get("Expressions", {})) != {}:
             self.expressions = ExpressionModule.from_dict(expr)
 
@@ -483,18 +483,18 @@ class AINB:
             self.replacement_table = [
                 ReplacementEntry._from_dict(entry) for entry in data["Replacement Table"]
             ]
-        
+
         self.modules = [
             Module._from_dict(module) for module in data["Modules"]
         ]
 
         if (unk_section := data.get("Unknown Section 0x58", {})) != {}:
             self.unk_section0x58 = UnknownSection0x58._from_dict(unk_section)
-        
+
         self.exists_section_0x6c = data.get("Has Section 0x6C", False)
 
         return self
-    
+
     @classmethod
     def from_json(cls, filepath: str, override_filename: str = "") -> "AINB":
         """
@@ -502,14 +502,14 @@ class AINB:
         """
         with open(filepath, "r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f), override_filename)
-        
+
     @classmethod
     def from_json_text(cls, text: str, override_filename: str = "") -> "AINB":
         """
         Deserialize a JSON string into an AINB object
         """
         return cls.from_dict(json.loads(text), override_filename)
-    
+
     def _build_context(self, ctx: WriteContext) -> None:
         node_size: int = 0x3c if self.version > 0x404 else 0x38
         attachment_size: int = 0x10 if self.version > 0x404 else 0xc
@@ -698,57 +698,57 @@ class AINB:
 
         for cmd in self.commands:
             cmd._write(writer)
-        
+
         for i, node in enumerate(self.nodes):
             node._write(writer, ctx, i)
-        
+
         if self.blackboard:
             self.blackboard._write(writer, ctx)
         else:
             writer.write(b"\x00" * 0x30) # files always have a blackboard section, just in case the user deleted it from the json
-        
+
         for node in self.nodes:
             node._write_params(writer, ctx)
-        
+
         for i in ctx.attachment_indices:
             writer.write_u32(i)
-        
+
         param_offset: int = writer.tell() + (0x10 if self.version > 0x404 else 0xc) * len(ctx.attachments)
         for i, attachment in enumerate(ctx.attachments):
             attachment._write(writer, param_offset, i, ctx.attachment_expression_counts, ctx.attachment_expression_sizes, self.version > 0x404)
             param_offset += 0x64
-        
+
         for attachment in ctx.attachments:
             attachment._write_params(writer, ctx.prop_indices)
-        
+
         ctx.props._write(writer)
         ctx.params._write(writer, ctx.multi_params)
 
         for multi_param in ctx.multi_params:
             multi_param._write(writer)
-        
+
         trans_offset: int = writer.tell() + 4 * len(ctx.transitions)
         for transition in ctx.transitions:
             writer.write_u32(trans_offset)
             trans_offset += (8 if transition.transition_type == 0 else 4)
         for transition in ctx.transitions:
             self._write_transition(writer, transition)
-        
+
         for query in ctx.queries:
             writer.write_u16(query)
             writer.write_u16(0)
-        
+
         if self.expressions is not None:
             writer.write(ctx.expression_binary)
-        
+
         writer.write_u32(len(self.modules))
         for module in self.modules:
             self._write_module(writer, module)
-        
+
         writer.write_u32(len(ctx.actions))
         for index, action_slot, action in ctx.actions:
             self._write_action(writer, index, action_slot, action)
-        
+
         writer.write_u32(self.blackboard_id)
         writer.write_u32(self.parent_blackboard_id)
 
@@ -757,7 +757,7 @@ class AINB:
             writer.write_u32(self.unk_section0x58.unk04)
             writer.write_u32(self.unk_section0x58.unk08)
             writer.write_u32(self.unk_section0x58.unk0c)
-        
+
         if ctx.state_info:
             for state_info in ctx.state_info:
                 writer.write_string_offset(state_info.desired_state)
@@ -765,7 +765,7 @@ class AINB:
                 writer.write_u32(state_info.unk08)
                 writer.write_u32(state_info.unk0c)
                 writer.write_u32(state_info.unk10)
-        
+
         if self.version > 0x404:
             writer.write_u16(0)
             writer.write_u16(len(self.replacement_table))
@@ -790,10 +790,10 @@ class AINB:
                 writer.write_s16(-1)
             for replacement in self.replacement_table:
                 self._write_replacement(writer, replacement)
-        
+
         if self.exists_section_0x6c:
             writer.write_u32(0)
-        
+
         writer.write_u32(0) # enum resolve table
 
         writer.write_string_pool()
@@ -805,7 +805,7 @@ class AINB:
         writer: AINBWriter = AINBWriter(io.BytesIO(), name = "AINB Writer")
         self.write(writer)
         return writer.get_buffer()
-    
+
     def save_ainb(self, output_path: str = "", override_filename: str = "") -> None:
         if output_path:
             os.makedirs(output_path, exist_ok=True)
@@ -817,7 +817,7 @@ class AINB:
         if node_index < 0 or node_index >= len(self.nodes):
             return None
         return self.nodes[node_index]
-    
+
     def get_command(self, cmd_index: int) -> Command | None:
         if cmd_index < 0 or cmd_index >= len(self.commands):
             return None
@@ -837,7 +837,7 @@ class AINB:
         """
         Master re-indexer for the AINB graph. Shifts all node pointers up or down.
         """
-        from ainb.node import get_null_index, PlugType
+        from ainb.node import PlugType, get_null_index
         from ainb.param_common import ParamType
         from ainb.replacement import ReplacementType
 
@@ -897,26 +897,26 @@ class AINB:
         """Inserts a node at a specific index, shifting all subsequent nodes up."""
         if index < 0 or index > len(self.nodes):
             raise ValueError(f"Cannot insert node at out-of-bounds index {index}")
-        
+
         self._shift_indices(threshold=index, shift=1)
         node.index = index
         self.nodes.insert(index, node)
-        
+
         # Enforce strict index contiguity
         for i, n in enumerate(self.nodes):
             n.index = i
-            
+
         return index
 
     def remove_node(self, index: int) -> None:
         """Removes a node, shifting subsequent nodes down and nullifying pointers to it."""
         if index < 0 or index >= len(self.nodes):
             raise ValueError(f"Cannot remove node at out-of-bounds index {index}")
-        
+
         # Shift everything > index down by 1. Nullify anything pointing exactly to index.
         self._shift_indices(threshold=index + 1, shift=-1, removed_index=index)
         self.nodes.pop(index)
-        
+
         # Enforce strict index contiguity
         for i, n in enumerate(self.nodes):
             n.index = i
@@ -956,14 +956,14 @@ class AINB:
     def add_blackboard_param(self, p_type: "BBParamType", name: str, default_value: typing.Any = None) -> int:
         """Adds a new parameter to the blackboard and returns its index."""
         from ainb.blackboard import BBParam, Blackboard
-        
+
         if self.blackboard is None:
             self.blackboard = Blackboard()
-            
+
         param = BBParam(p_type)
         param.name = name
         param.default_value = default_value
-        
+
         target_list = self.blackboard.get_params(p_type)
         target_list.append(param)
         return len(target_list) - 1
@@ -972,11 +972,11 @@ class AINB:
         """Removes a blackboard parameter and shifts all node references to it down by 1."""
         if not self.blackboard:
             return
-            
+
         target_list = self.blackboard.get_params(p_type)
         if index < 0 or index >= len(target_list):
             raise ValueError("Blackboard index out of bounds")
-            
+
         target_list.pop(index)
 
         # Cascade the shift to all nodes using this parameter type
